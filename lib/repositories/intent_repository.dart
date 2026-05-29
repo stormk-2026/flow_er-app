@@ -1,0 +1,189 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+
+import '../models/app_database.dart';
+import '../models/parsed_intent.dart';
+import '../models/thought_capture_mode.dart';
+
+class IntentRepository {
+  const IntentRepository(this._db);
+
+  final AppDatabase _db;
+
+  // watch() 返回 Stream，和 Room DAO 的 Flow<List<T>> 完全一样
+  Stream<List<FlowIntent>> watchAll() {
+    return (_db.select(
+      _db.flowIntents,
+    )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
+  }
+
+  Future<List<FlowIntent>> getPendingSync() {
+    return (_db.select(
+      _db.flowIntents,
+    )..where((t) => t.serverId.isNull())).get();
+  }
+
+  Future<FlowIntent> saveParsed(ParsedIntent parsed) async {
+    final now = DateTime.now();
+    final id = await _db
+        .into(_db.flowIntents)
+        .insert(
+          FlowIntentsCompanion.insert(
+            title: parsed.title,
+            rawInput: parsed.rawInput,
+            note: Value(parsed.note),
+            dueAt: Value(parsed.dueAt),
+            priority: Value(parsed.priority.name),
+            tags: Value(jsonEncode(parsed.tags)),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    return (_db.select(
+      _db.flowIntents,
+    )..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future<FlowIntent?> saveJournal({
+    required ThoughtCaptureMode mode,
+    required String quickText,
+    required String title,
+    required String body,
+    List<String> imagePaths = const [],
+  }) async {
+    final now = DateTime.now();
+    late final String resolvedTitle;
+    late final String rawInput;
+    String? note;
+
+    if (mode == ThoughtCaptureMode.quick) {
+      final text = quickText.trim();
+      if (text.isEmpty) return null;
+      resolvedTitle = text.length > 48 ? '${text.substring(0, 48)}…' : text;
+      rawInput = text;
+    } else {
+      final t = title.trim();
+      final b = body.trim();
+      if (t.isEmpty && b.isEmpty && imagePaths.isEmpty) return null;
+      resolvedTitle = t.isNotEmpty
+          ? t
+          : (b.length > 32
+                ? '${b.substring(0, 32)}…'
+                : b.isNotEmpty
+                ? b
+                : '心笺');
+      rawInput = [t, b].where((s) => s.isNotEmpty).join('\n');
+      note = b.isNotEmpty ? b : null;
+    }
+
+    final id = await _db
+        .into(_db.flowIntents)
+        .insert(
+          FlowIntentsCompanion.insert(
+            title: resolvedTitle,
+            rawInput: rawInput,
+            note: Value(note),
+            tags: Value(jsonEncode(const <String>[])),
+            attachments: Value(jsonEncode(imagePaths)),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    return (_db.select(
+      _db.flowIntents,
+    )..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future<FlowIntent?> updateJournal({
+    required int localId,
+    required String title,
+    required String body,
+  }) async {
+    final t = title.trim();
+    final b = body.trim();
+    if (t.isEmpty && b.isEmpty) return null;
+
+    final resolvedTitle = t.isNotEmpty
+        ? t
+        : (b.length > 32 ? '${b.substring(0, 32)}…' : b);
+    final rawInput = [t, b].where((value) => value.isNotEmpty).join('\n');
+    final note = b.isNotEmpty ? b : null;
+
+    await (_db.update(
+      _db.flowIntents,
+    )..where((row) => row.id.equals(localId))).write(
+      FlowIntentsCompanion(
+        title: Value(resolvedTitle),
+        rawInput: Value(rawInput),
+        note: Value(note),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    return (_db.select(
+      _db.flowIntents,
+    )..where((row) => row.id.equals(localId))).getSingleOrNull();
+  }
+
+  /// 从服务端数据 upsert：有 serverId 则更新，否则插入。
+  Future<void> upsertFromServer(Map<String, dynamic> item) async {
+    final serverId = item['id'] as String?;
+    if (serverId == null) return;
+
+    final existing = await (_db.select(
+      _db.flowIntents,
+    )..where((t) => t.serverId.equals(serverId))).getSingleOrNull();
+
+    final createdAt = item['created_at'] != null
+        ? DateTime.tryParse(item['created_at'] as String) ?? DateTime.now()
+        : DateTime.now();
+    final updatedAt = item['updated_at'] != null
+        ? DateTime.tryParse(item['updated_at'] as String) ?? DateTime.now()
+        : DateTime.now();
+
+    final companion = FlowIntentsCompanion(
+      serverId: Value(serverId),
+      title: Value((item['title'] as String?) ?? ''),
+      rawInput: Value((item['raw_input'] as String?) ?? ''),
+      note: Value(item['note'] as String?),
+      dueAt: Value(
+        item['due_at'] != null
+            ? DateTime.tryParse(item['due_at'] as String)
+            : null,
+      ),
+      priority: Value((item['priority'] as String?) ?? 'medium'),
+      tags: Value(jsonEncode(item['tags'] ?? [])),
+      attachments: Value(jsonEncode(item['attachments'] ?? [])),
+      status: Value((item['status'] as String?) ?? 'open'),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+
+    if (existing == null) {
+      await _db.into(_db.flowIntents).insert(companion);
+    } else {
+      // 以 updated_at 较新的为准
+      if (updatedAt.isAfter(existing.updatedAt)) {
+        await (_db.update(
+          _db.flowIntents,
+        )..where((t) => t.serverId.equals(serverId))).write(companion);
+      }
+    }
+  }
+
+  /// 本地记录推送成功后回写 serverId。
+  Future<void> updateServerId({
+    required int localId,
+    required String serverId,
+  }) {
+    return (_db.update(_db.flowIntents)..where((t) => t.id.equals(localId)))
+        .write(FlowIntentsCompanion(serverId: Value(serverId)));
+  }
+
+  Future<void> deleteLocal(int localId) {
+    return (_db.delete(
+      _db.flowIntents,
+    )..where((t) => t.id.equals(localId))).go();
+  }
+}
