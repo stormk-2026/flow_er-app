@@ -25,77 +25,77 @@ class FlowAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: SizedBox(
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              height: 54,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  width: 1,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: _isLoggedIn ? 340 : 118),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: 54,
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 18,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 22,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final sideWidth = (constraints.maxWidth * 0.28).clamp(
-                    44.0,
-                    96.0,
-                  );
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned.fill(
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: sideWidth,
-                              child: _isLoggedIn
-                                  ? Padding(
-                                      padding: const EdgeInsets.only(left: 14),
-                                      child: _NicknameText(
-                                        label: nickname!.trim(),
-                                        onTap: onIdentityTap,
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                            const Expanded(child: SizedBox.shrink()),
-                            SizedBox(
-                              width: sideWidth,
-                              child: Align(
-                                alignment: Alignment.centerRight,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final sideWidth = (constraints.maxWidth * 0.28).clamp(
+                      44.0,
+                      96.0,
+                    );
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: sideWidth,
                                 child: _isLoggedIn
                                     ? Padding(
                                         padding: const EdgeInsets.only(
-                                          right: 8,
+                                          left: 14,
                                         ),
-                                        child: _SettingsIconButton(
-                                          onTap: onSettingsTap,
+                                        child: _NicknameText(
+                                          label: nickname!.trim(),
+                                          onTap: onIdentityTap,
                                         ),
                                       )
                                     : const SizedBox.shrink(),
                               ),
-                            ),
-                          ],
+                              const Expanded(child: SizedBox.shrink()),
+                              SizedBox(
+                                width: sideWidth,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _isLoggedIn
+                                      ? Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          child: _SettingsIconButton(
+                                            onTap: onSettingsTap,
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Center(child: _BrandTitle()),
-                    ],
-                  );
-                },
+                        const Center(child: _BrandTitle()),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -184,7 +184,7 @@ class _SettingsIconButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: const SizedBox(
+        child: SizedBox(
           width: 40,
           height: 40,
           child: Icon(Icons.tune_rounded, size: 22, color: AppColors.navIcon),

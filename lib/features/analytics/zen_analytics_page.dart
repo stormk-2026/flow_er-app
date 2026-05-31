@@ -23,15 +23,6 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
 
     return CustomScrollView(
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-          sliver: SliverToBoxAdapter(
-            child: _PeriodPicker(
-              period: _period,
-              onChanged: (period) => setState(() => _period = period),
-            ),
-          ),
-        ),
         statsAsync.when(
           loading: () => const SliverFillRemaining(
             hasScrollBody: false,
@@ -45,20 +36,64 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
             ),
           ),
           data: (stats) {
-            final cards = _buildCards(context, stats, portraitAsync);
+            final statCards = _buildStatCards(context, stats);
+            final portrait = portraitAsync.valueOrNull;
             return SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 124),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => cards[index],
-                  childCount: cards.length,
-                ),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.05,
-                ),
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 124),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '沉淀',
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                                letterSpacing: 1.8,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              '山静日长，万象归心。专注、心笺与觉察，会在此沉入清晰的纹理。',
+                              style: GoogleFonts.notoSansSc(
+                                fontSize: 13,
+                                height: 1.65,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _PeriodMenu(
+                        period: _period,
+                        onChanged: (period) => setState(() => _period = period),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _PortraitCard(
+                    portrait: portrait?.userPortrait,
+                    interpretation: portrait?.interpretation,
+                    loading: portraitAsync.isLoading,
+                  ),
+                  const SizedBox(height: 12),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.05,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: statCards,
+                  ),
+                ]),
               ),
             );
           },
@@ -67,13 +102,8 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
     );
   }
 
-  List<Widget> _buildCards(
-    BuildContext context,
-    AnalyticsStats stats,
-    AsyncValue<AnalyticsPortrait> portraitAsync,
-  ) {
+  List<Widget> _buildStatCards(BuildContext context, AnalyticsStats stats) {
     final periodLabel = _period.label;
-    final portrait = portraitAsync.valueOrNull;
     return [
       _StatCard(
         icon: Icons.hourglass_bottom_outlined,
@@ -109,58 +139,57 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
         hint: stats.intents.total == 0 ? '尚无心笺记录' : '心笺深度与多样性',
         onTap: () => _showAwarenessDetail(context, stats),
       ),
-      _PortraitCard(
-        portrait: portrait?.userPortrait,
-        interpretation: portrait?.interpretation,
-        loading: portraitAsync.isLoading,
-      ),
     ];
   }
 }
 
-class _PeriodPicker extends StatelessWidget {
-  const _PeriodPicker({required this.period, required this.onChanged});
+class _PeriodMenu extends StatelessWidget {
+  const _PeriodMenu({required this.period, required this.onChanged});
 
   final AnalyticsPeriod period;
   final ValueChanged<AnalyticsPeriod> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
-      ),
-      child: Row(
-        children: AnalyticsPeriod.values.map((item) {
-          final selected = item == period;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(item),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.accentSoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Text(
-                  item.label,
-                  style: GoogleFonts.notoSansSc(
-                    fontSize: 12,
-                    color: selected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
-                  ),
-                ),
+    return PopupMenuButton<AnalyticsPeriod>(
+      tooltip: '切换周期',
+      initialValue: period,
+      color: AppColors.surface,
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: onChanged,
+      itemBuilder: (context) => AnalyticsPeriod.values.map((item) {
+        return PopupMenuItem(
+          value: item,
+          child: Text(item.label, style: GoogleFonts.notoSansSc(fontSize: 13)),
+        );
+      }).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.glassSurface,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              period.label,
+              style: GoogleFonts.notoSansSc(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          );
-        }).toList(),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -193,13 +222,14 @@ class _StatCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.card,
+            color: AppColors.glassSurface,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.glassBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -280,39 +310,58 @@ class _PortraitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEDF2EF), Color(0xFFE8DDD8)],
+          colors: AppColors.statGradient,
         ),
+        border: Border.all(color: AppColors.glassBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.spa_outlined, size: 21, color: AppColors.navIcon),
-          const Spacer(),
-          Text(
-            loading ? '正在感受…' : (portrait ?? '—'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 28,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.14),
+              border: Border.all(color: AppColors.glassBorder),
             ),
+            child: Icon(Icons.spa_outlined, size: 22, color: AppColors.navIcon),
           ),
-          const SizedBox(height: 6),
-          Text(
-            loading ? '心智质地生成中' : (interpretation ?? '暂无画像'),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.notoSansSc(
-              fontSize: 11,
-              height: 1.45,
-              color: AppColors.textSecondary,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loading ? '正在感受…' : (portrait ?? '—'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 29,
+                    height: 1.12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  loading ? '心智质地生成中' : (interpretation ?? '暂无画像'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.notoSansSc(
+                    fontSize: 12,
+                    height: 1.48,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -616,7 +665,7 @@ class _BarList extends StatelessWidget {
                     value: ratio,
                     minHeight: 8,
                     backgroundColor: AppColors.background,
-                    color: const Color(0xFF516356).withValues(alpha: 0.56),
+                    color: AppColors.primaryAction.withValues(alpha: 0.62),
                   ),
                 ),
               ),
@@ -670,7 +719,7 @@ class _TrendPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF516356)
+      ..color = AppColors.primaryAction
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final grid = Paint()
@@ -685,7 +734,7 @@ class _TrendPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(size.width / 2, size.height * (1 - values.first / 100)),
         3,
-        Paint()..color = const Color(0xFF516356),
+        Paint()..color = AppColors.primaryAction,
       );
       return;
     }

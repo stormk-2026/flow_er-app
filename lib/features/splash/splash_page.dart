@@ -5,7 +5,6 @@ import '../../core/theme/splash_colors.dart';
 import '../shell/main_scaffold.dart';
 import 'widgets/lotus_divider.dart';
 import 'widgets/zen_ripple.dart';
-import 'widgets/zenith_logo.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -38,7 +37,7 @@ class _SplashPageState extends State<SplashPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -78,8 +77,6 @@ class _SplashPageState extends State<SplashPage> {
                       height: 1.6,
                     ),
                   ),
-                  const SizedBox(height: 56),
-                  const ZenithLogo(),
                   const SizedBox(height: 28),
                 ],
               ),

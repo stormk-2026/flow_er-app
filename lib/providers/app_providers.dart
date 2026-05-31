@@ -8,10 +8,13 @@ import '../models/thought_capture_mode.dart';
 import '../repositories/focus_session_repository.dart';
 import '../repositories/intent_repository.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/audio/app_audio_service.dart';
 import '../services/focus/focus_moment_service.dart';
 import '../services/sensors/focus_sensor_service.dart';
 import '../services/sync/focus_session_sync_service.dart';
 import '../services/sync/intent_sync_service.dart';
+import '../services/uploads/image_upload_service.dart';
+import 'settings_provider.dart';
 
 // Provider<AppDatabase> — 同步创建，不需要 FutureProvider
 // Drift 的 LazyDatabase 内部自己处理异步初始化
@@ -43,6 +46,12 @@ final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   return const AnalyticsService();
 });
 
+final appAudioServiceProvider = Provider<AppAudioService>((ref) {
+  final service = AppAudioService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 final analyticsStatsProvider =
     FutureProvider.family<AnalyticsStats, AnalyticsPeriod>((ref, period) {
       return ref.watch(analyticsServiceProvider).fetchStats(period);
@@ -70,6 +79,10 @@ void _invalidateAnalytics(void Function(ProviderOrFamily provider) invalidate) {
 
 final focusMomentServiceProvider = Provider<FocusMomentService>((ref) {
   return const FocusMomentService();
+});
+
+final imageUploadServiceProvider = Provider<ImageUploadService>((ref) {
+  return const ImageUploadService();
 });
 
 final focusSessionsProvider = StreamProvider<List<FocusSession>>((ref) {
@@ -105,6 +118,9 @@ class IntentController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
+      final attachments = imagePaths.isEmpty
+          ? const <String>[]
+          : await ref.read(imageUploadServiceProvider).uploadImages(imagePaths);
       final intent = await ref
           .read(intentRepositoryProvider)
           .saveJournal(
@@ -112,27 +128,14 @@ class IntentController extends AsyncNotifier<void> {
             quickText: quickText,
             title: title,
             body: body,
-            imagePaths: imagePaths,
+            imagePaths: attachments,
           );
       if (intent != null) {
         await ref.read(intentSyncServiceProvider).pushIntent(intent);
-        invalidateAnalyticsProviders(ref);
-      }
-    });
-  }
-
-  Future<void> updateJournal({
-    required FlowIntent intent,
-    required String title,
-    required String body,
-  }) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final updated = await ref
-          .read(intentRepositoryProvider)
-          .updateJournal(localId: intent.id, title: title, body: body);
-      if (updated != null) {
-        await ref.read(intentSyncServiceProvider).updateIntent(updated);
+        await ref
+            .read(appAudioServiceProvider)
+            .setEnabled(ref.read(settingsProvider).soundEnabled);
+        unawaited(ref.read(appAudioServiceProvider).playIntentSent());
         invalidateAnalyticsProviders(ref);
       }
     });

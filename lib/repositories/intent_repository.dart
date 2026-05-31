@@ -95,37 +95,6 @@ class IntentRepository {
     )..where((t) => t.id.equals(id))).getSingle();
   }
 
-  Future<FlowIntent?> updateJournal({
-    required int localId,
-    required String title,
-    required String body,
-  }) async {
-    final t = title.trim();
-    final b = body.trim();
-    if (t.isEmpty && b.isEmpty) return null;
-
-    final resolvedTitle = t.isNotEmpty
-        ? t
-        : (b.length > 32 ? '${b.substring(0, 32)}…' : b);
-    final rawInput = [t, b].where((value) => value.isNotEmpty).join('\n');
-    final note = b.isNotEmpty ? b : null;
-
-    await (_db.update(
-      _db.flowIntents,
-    )..where((row) => row.id.equals(localId))).write(
-      FlowIntentsCompanion(
-        title: Value(resolvedTitle),
-        rawInput: Value(rawInput),
-        note: Value(note),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-
-    return (_db.select(
-      _db.flowIntents,
-    )..where((row) => row.id.equals(localId))).getSingleOrNull();
-  }
-
   /// 从服务端数据 upsert：有 serverId 则更新，否则插入。
   Future<void> upsertFromServer(Map<String, dynamic> item) async {
     final serverId = item['id'] as String?;
@@ -185,5 +154,11 @@ class IntentRepository {
     return (_db.delete(
       _db.flowIntents,
     )..where((t) => t.id.equals(localId))).go();
+  }
+
+  Future<void> deleteByServerId(String serverId) {
+    return (_db.delete(
+      _db.flowIntents,
+    )..where((t) => t.serverId.equals(serverId))).go();
   }
 }

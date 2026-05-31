@@ -1,31 +1,72 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/theme/app_colors.dart';
+import 'core/theme/day_night_theme.dart';
 import 'features/splash/splash_page.dart';
+import 'providers/settings_provider.dart';
 
 void main() {
-  runApp(const FlowJingApp());
+  runApp(const ProviderScope(child: FlowJingApp()));
 }
 
-class FlowJingApp extends StatelessWidget {
+class FlowJingApp extends ConsumerStatefulWidget {
   const FlowJingApp({super.key});
 
   @override
+  ConsumerState<FlowJingApp> createState() => _FlowJingAppState();
+}
+
+class _FlowJingAppState extends ConsumerState<FlowJingApp> {
+  Timer? _themeTimer;
+  AppThemeMode? _scheduledThemeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleThemeRefresh();
+  }
+
+  @override
+  void dispose() {
+    _themeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleThemeRefresh() {
+    _themeTimer?.cancel();
+    _scheduledThemeMode = appThemeMode;
+    if (appThemeMode != AppThemeMode.system) return;
+    _themeTimer = Timer(durationUntilNextThemeBoundary(), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleThemeRefresh();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: '流境',
-        theme: ThemeData(
-          scaffoldBackgroundColor: const Color(0xFFF7F7F5),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF737873),
-            surface: const Color(0xFFF7F7F5),
-          ),
-          useMaterial3: true,
+    final themeMode = ref.watch(settingsProvider).themeMode;
+    appThemeMode = themeMode;
+    if (_scheduledThemeMode != themeMode) {
+      _scheduleThemeRefresh();
+    }
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: '流境',
+      theme: ThemeData(
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.navIcon,
+          surface: AppColors.background,
+          brightness: isNightTheme ? Brightness.dark : Brightness.light,
         ),
-        home: const SplashPage(),
+        useMaterial3: true,
       ),
+      home: const SplashPage(),
     );
   }
 }

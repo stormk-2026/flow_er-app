@@ -72,13 +72,12 @@ class _ZenCapsuleNavState extends State<ZenCapsuleNav>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(40),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.55), width: 1.0),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 24,
+                color: Colors.black.withValues(alpha: 0.07),
+                blurRadius: 18,
                 spreadRadius: 0,
                 offset: const Offset(0, 6),
               ),
@@ -159,7 +158,7 @@ class _SlidingPill extends StatelessWidget {
                   ),
                   // 顶部高光
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: Colors.white.withValues(alpha: 0.18),
                     blurRadius: 2,
                     offset: const Offset(0, -1),
                   ),
@@ -185,10 +184,10 @@ class _NavIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   Key get _tabKey => switch (tab) {
-        MainTab.inspiration => const Key('nav_inspiration'),
-        MainTab.state => const Key('nav_state'),
-        MainTab.analytics => const Key('nav_analytics'),
-      };
+    MainTab.inspiration => const Key('nav_inspiration'),
+    MainTab.state => const Key('nav_state'),
+    MainTab.analytics => const Key('nav_analytics'),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -223,15 +222,15 @@ class _NavIcon extends StatelessWidget {
   Widget _buildIcon(Color color) {
     return switch (tab) {
       MainTab.inspiration => CustomPaint(
-          size: const Size(22, 22),
-          painter: _RingDotPainter(color: color),
-        ),
+        size: const Size(22, 22),
+        painter: _RingDotPainter(color: color),
+      ),
       MainTab.state => Icon(Icons.eco_outlined, size: 22, color: color),
       MainTab.analytics => Icon(
-          Icons.person_outline_rounded,
-          size: 22,
-          color: color,
-        ),
+        Icons.person_outline_rounded,
+        size: 22,
+        color: color,
+      ),
     };
   }
 }

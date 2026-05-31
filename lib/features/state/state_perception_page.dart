@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/audio/app_audio_service.dart';
 import '../../services/sensors/focus_sensor_service.dart';
 import 'widgets/thought_capture_overlay.dart';
 
@@ -18,7 +19,7 @@ enum _FocusTrigger { tap, sensor }
 
 enum _FocusPhase { idle, blurringIn, focused, blurringOut }
 
-const _focusMomentRefresh = Duration(minutes: 5);
+const _focusMomentRefresh = Duration(minutes: 30);
 const _fallbackFocusMoment = '先把此刻放轻。\n你已经在回到自己。';
 
 class StatePerceptionPage extends ConsumerStatefulWidget {
@@ -66,9 +67,11 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   String? _currentMoment;
 
   bool _showCapture = false;
+  bool _flowMuted = false;
 
   // 点击波纹注入
   final _tapRippleNotifier = ValueNotifier<int>(0);
+  late final AppAudioService _audioService;
 
   /// 进入页面时 mock 一条「今日宜」，登录后展示。
   late final String _dailyTip = HomeGreeting.mockDailyTip();
@@ -76,6 +79,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   @override
   void initState() {
     super.initState();
+    _audioService = ref.read(appAudioServiceProvider);
 
     _blurController = AnimationController(
       vsync: this,
@@ -96,6 +100,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   @override
   void dispose() {
     _setShellHidden(false);
+    unawaited(_audioService.endFlowSilently());
     _blurController.dispose();
     _stillTimer?.cancel();
     _motionTimer?.cancel();
@@ -122,6 +127,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     _momentTimer?.cancel();
     _blurController.stop();
     _blurController.value = 0;
+    unawaited(_audioService.endFlowSilently());
     if (_phase != _FocusPhase.idle) {
       setState(() {
         _phase = _FocusPhase.idle;
@@ -153,6 +159,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     _motionTimer?.cancel();
     _momentTimer?.cancel();
     _sensorReady = false;
+    unawaited(_audioService.endFlowSilently());
 
     if (_phase != _FocusPhase.idle) {
       _recordFocusSessionIfNeeded();
@@ -179,6 +186,9 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
     // 每次点击都注入一个额外波纹
     _tapRippleNotifier.value++;
+    if (_phase == _FocusPhase.idle) {
+      unawaited(_audioService.playCenterDotTap());
+    }
 
     final now = DateTime.now();
     if (_lastTap == null ||
@@ -242,6 +252,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       _currentMoment = null;
     });
     _setShellHidden(true);
+    unawaited(_audioService.enterFlow());
 
     await _blurController.forward();
     if (!mounted) return;
@@ -256,6 +267,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     if (!mounted) return;
     _momentTimer?.cancel();
     _recordFocusSessionIfNeeded();
+    unawaited(_audioService.exitFlow());
     setState(() {
       _phase = _FocusPhase.blurringOut;
       _currentMoment = null;
@@ -270,6 +282,12 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       _focusStartedAt = null;
     });
     _setShellHidden(false);
+  }
+
+  Future<void> _toggleFlowMuted() async {
+    final muted = await _audioService.toggleFlowMuted();
+    if (!mounted) return;
+    setState(() => _flowMuted = muted);
   }
 
   // ── 通知 Shell 隐藏/显示 ──────────────────────────────────────────────────
@@ -343,10 +361,6 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   Future<void> _showMoment(String text) async {
     if (!mounted) return;
     setState(() => _currentMoment = text);
-    // 8s 后淡出
-    await Future<void>.delayed(const Duration(seconds: 8));
-    if (!mounted || _currentMoment != text) return;
-    setState(() => _currentMoment = null);
   }
 
   // ── 下滑手势 ──────────────────────────────────────────────────────────────
@@ -376,7 +390,11 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
   @override
   Widget build(BuildContext context) {
-    final sensorFocusEnabled = ref.watch(settingsProvider).sensorFocusEnabled;
+    final settings = ref.watch(settingsProvider);
+    final sensorFocusEnabled = settings.sensorFocusEnabled;
+    final soundEnabled = settings.soundEnabled;
+
+    _audioService.setEnabled(soundEnabled);
 
     if (widget.featuresEnabled && widget.isActive && sensorFocusEnabled) {
       ref.listen(focusStateProvider, (_, next) {
@@ -388,6 +406,9 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       if (previous?.sensorFocusEnabled == true && !next.sensorFocusEnabled) {
         _stillTimer?.cancel();
         _motionTimer?.cancel();
+      }
+      if (previous?.soundEnabled != next.soundEnabled) {
+        unawaited(_audioService.setEnabled(next.soundEnabled));
       }
     });
 
@@ -426,6 +447,9 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
                     visible: true,
                     top: false,
                   ),
+
+                if (_phase == _FocusPhase.focused && soundEnabled)
+                  _FlowMuteButton(muted: _flowMuted, onTap: _toggleFlowMuted),
 
                 if (_showCapture)
                   ThoughtCaptureOverlay(
@@ -593,6 +617,32 @@ class _BreathTextState extends State<_BreathText>
               fontWeight: FontWeight.w500,
               letterSpacing: 1.5,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlowMuteButton extends StatelessWidget {
+  const _FlowMuteButton({required this.muted, required this.onTap});
+
+  final bool muted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 14,
+      right: 14,
+      child: SafeArea(
+        child: IconButton(
+          tooltip: muted ? '开启声音' : '静音',
+          onPressed: onTap,
+          icon: Icon(
+            muted ? Icons.volume_off_rounded : Icons.graphic_eq_rounded,
+            size: 24,
+            color: AppColors.textMuted.withValues(alpha: 0.82),
           ),
         ),
       ),

@@ -35,6 +35,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   final _bodyController = TextEditingController();
   final _imagePaths = <String>[];
   final _picker = ImagePicker();
+  bool _submitting = false;
 
   late final AnimationController _ctrl;
   late final Animation<Offset> _cardSlide;
@@ -70,15 +71,26 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   Future<void> _pickImages() async {
     final remaining = JournalImageStore.maxImages - _imagePaths.length;
     if (remaining <= 0) return;
-    final picks = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final singlePick = remaining == 1
+        ? await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85)
+        : null;
+    final picks = remaining == 1
+        ? [?singlePick]
+        : await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
     if (picks.isEmpty || !mounted) return;
-    final stored = await JournalImageStore.persistPicks(picks);
+    final stored = await JournalImageStore.persistPicks(
+      picks.take(remaining).toList(),
+    );
     if (!mounted) return;
     setState(() => _imagePaths.addAll(stored));
   }
 
   Future<void> _submit() async {
-    final future = ref.read(intentControllerProvider.notifier).saveJournal(
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    final future = ref
+        .read(intentControllerProvider.notifier)
+        .saveJournal(
           mode: _mode,
           quickText: _quickController.text,
           title: _titleController.text,
@@ -106,9 +118,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
       fit: StackFit.expand,
       children: [
         // 点击卡片外区域关闭
-        Positioned.fill(
-          child: GestureDetector(onTap: _dismiss),
-        ),
+        Positioned.fill(child: GestureDetector(onTap: _dismiss)),
         // 卡片：从底部滑入
         Align(
           alignment: Alignment.bottomCenter,
@@ -172,18 +182,19 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
                       ),
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: _canSubmit ? _submit : null,
+                        onPressed: _canSubmit && !_submitting ? _submit : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF516356),
-                          disabledBackgroundColor:
-                              const Color(0xFF516356).withValues(alpha: 0.35),
+                          disabledBackgroundColor: const Color(
+                            0xFF516356,
+                          ).withValues(alpha: 0.35),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                         child: Text(
-                          '收入心笺',
+                          _submitting ? '上传中…' : '收入心笺',
                           style: GoogleFonts.notoSansSc(fontSize: 14),
                         ),
                       ),
@@ -248,11 +259,11 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
           runSpacing: 8,
           children: [
             ..._imagePaths.asMap().entries.map(
-                  (e) => _ImageThumb(
-                    path: e.value,
-                    onRemove: () => setState(() => _imagePaths.removeAt(e.key)),
-                  ),
-                ),
+              (e) => _ImageThumb(
+                path: e.value,
+                onRemove: () => setState(() => _imagePaths.removeAt(e.key)),
+              ),
+            ),
             if (_imagePaths.length < JournalImageStore.maxImages)
               _AddImageButton(onTap: _pickImages),
           ],
@@ -264,7 +275,10 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   InputDecoration _fieldDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.notoSansSc(fontSize: 13, color: AppColors.textMuted),
+      hintStyle: GoogleFonts.notoSansSc(
+        fontSize: 13,
+        color: AppColors.textMuted,
+      ),
       filled: true,
       fillColor: AppColors.background,
       border: OutlineInputBorder(
@@ -317,7 +331,9 @@ class _ModeToggle extends StatelessWidget {
                   m.label,
                   style: GoogleFonts.notoSansSc(
                     fontSize: 13,
-                    color: selected ? const Color(0xFF516356) : AppColors.textMuted,
+                    color: selected
+                        ? const Color(0xFF516356)
+                        : AppColors.textMuted,
                     fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),

@@ -1,10 +1,13 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_database.dart';
 import '../../repositories/intent_repository.dart';
 import '../api/api_client.dart';
+
+const _intentLastSyncedAtKey = 'intent_last_synced_at';
 
 /// 登录后调 [syncOnLogin] 把远端数据拉到本地。
 /// 本地新增后调 [pushIntent] 推送到远端，再用后端打标结果刷新本地。
@@ -20,12 +23,27 @@ class IntentSyncService {
     await pullAll();
   }
 
+  /// 首次不带 since 全量拉取；之后带 since 增量拉取。
   Future<void> pullAll() async {
     try {
-      final resp = await _dio.get<Map<String, dynamic>>('/api/v1/intents');
+      final prefs = await SharedPreferences.getInstance();
+      final since = prefs.getString(_intentLastSyncedAtKey);
+      final resp = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/intents',
+        queryParameters: since == null ? null : {'since': since},
+      );
       final items = (resp.data?['items'] as List?) ?? [];
       for (final item in items.cast<Map<String, dynamic>>()) {
-        await _repo.upsertFromServer(item);
+        if (_isTombstone(item)) {
+          await _repo.deleteByServerId(item['id'] as String);
+        } else {
+          await _repo.upsertFromServer(item);
+        }
+      }
+
+      final serverTime = resp.data?['server_time'] as String?;
+      if (serverTime != null && serverTime.isNotEmpty) {
+        await prefs.setString(_intentLastSyncedAtKey, serverTime);
       }
     } on DioException {
       // 同步失败不影响本地使用
@@ -174,5 +192,11 @@ class IntentSyncService {
       if (decoded is List) return decoded;
     } catch (_) {}
     return const [];
+  }
+
+  bool _isTombstone(Map<String, dynamic> item) {
+    return item['id'] is String &&
+        item['deleted_at'] != null &&
+        !item.containsKey('raw_input');
   }
 }

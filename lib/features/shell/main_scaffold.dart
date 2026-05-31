@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../analytics/zen_analytics_page.dart';
 import '../auth/auth_page.dart';
 import '../inspiration/inspiration_flow_page.dart';
@@ -84,6 +85,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(authProvider).valueOrNull;
+    final themeMode = ref.watch(settingsProvider).themeMode;
+    final themeKey = '${themeMode.name}-${AppColors.background.toARGB32()}';
     final isLoggedIn = session != null;
 
     if (isLoggedIn && !_didSyncForRestoredSession) {
@@ -121,6 +124,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   child: IgnorePointer(
                     ignoring: _shellHidden,
                     child: FlowAppBar(
+                      key: ValueKey('appbar-$themeKey'),
                       nickname: session?.nickname,
                       onIdentityTap: isLoggedIn
                           ? () => _onIdentityTap(context)
@@ -145,16 +149,21 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             : MainTab.state.index,
                         children: [
                           if (isLoggedIn)
-                            const InspirationFlowPage()
+                            InspirationFlowPage(
+                              key: ValueKey('inspiration-$themeKey'),
+                            )
                           else
                             const SizedBox.shrink(),
                           StatePerceptionPage(
+                            key: ValueKey('state-$themeKey'),
                             isActive: isLoggedIn && _current == MainTab.state,
                             featuresEnabled: isLoggedIn,
                             onShellHide: _setShellHidden,
                           ),
                           if (isLoggedIn)
-                            const ZenAnalyticsPage()
+                            ZenAnalyticsPage(
+                              key: ValueKey('analytics-$themeKey'),
+                            )
                           else
                             const SizedBox.shrink(),
                         ],
@@ -170,6 +179,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             ignoring: _shellHidden || !isLoggedIn,
                             child: Center(
                               child: ZenCapsuleNav(
+                                key: ValueKey('nav-$themeKey'),
                                 current: _current,
                                 onChanged: (tab) {
                                   setState(() {

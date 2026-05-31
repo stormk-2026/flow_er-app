@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/app_database.dart';
 import '../../providers/app_providers.dart';
-import 'models/inspiration_moment.dart';
 import 'widgets/inspiration_moment_card.dart';
 
 /// 左侧 Tab：心笺（灵感拾遗）
@@ -27,13 +26,13 @@ class InspirationFlowPage extends ConsumerWidget {
                 Text(
                   '心笺',
                   style: GoogleFonts.playfairDisplay(
-                    fontSize: 34,
+                    fontSize: 32,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
-                    letterSpacing: 2,
+                    letterSpacing: 1.8,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   '静水流深，思绪如絮。冥想中记下的念头，会在此拾取呈现。',
                   style: GoogleFonts.notoSansSc(
@@ -67,12 +66,11 @@ class InspirationFlowPage extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(22, 8, 22, 120),
               sliver: SliverList.separated(
                 itemCount: moments.length,
-                separatorBuilder: (_, index) => const SizedBox(height: 28),
+                separatorBuilder: (_, index) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final moment = moments[index];
                   return InspirationMomentCard(
                     moment: moment,
-                    onEdit: () => _showEditSheet(context, ref, moment),
                     onDelete: () => _confirmDelete(context, ref, moment.intent),
                   );
                 },
@@ -82,113 +80,6 @@ class InspirationFlowPage extends ConsumerWidget {
         ),
       ],
     );
-  }
-}
-
-Future<void> _showEditSheet(
-  BuildContext context,
-  WidgetRef ref,
-  InspirationMoment moment,
-) async {
-  final titleController = TextEditingController(text: moment.title);
-  final bodyController = TextEditingController(text: moment.body);
-
-  final saved = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) {
-      final bottomInset = MediaQuery.viewInsetsOf(ctx).bottom;
-      return Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
-        child: Material(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '编辑心笺',
-                      style: GoogleFonts.notoSansSc(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      color: AppColors.textMuted,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: titleController,
-                  textInputAction: TextInputAction.next,
-                  decoration: _editDecoration('标题'),
-                  style: GoogleFonts.notoSansSc(fontSize: 15),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: bodyController,
-                  minLines: 5,
-                  maxLines: 9,
-                  decoration: _editDecoration('正文'),
-                  style: GoogleFonts.notoSansSc(fontSize: 14, height: 1.6),
-                ),
-                const SizedBox(height: 14),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF516356),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    '保存',
-                    style: GoogleFonts.notoSansSc(fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
-
-  final title = titleController.text;
-  final body = bodyController.text;
-  titleController.dispose();
-  bodyController.dispose();
-
-  if (saved != true || !context.mounted) return;
-  if (title.trim().isEmpty && body.trim().isEmpty) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('心笺不能为空')));
-    return;
-  }
-
-  await ref
-      .read(intentControllerProvider.notifier)
-      .updateJournal(intent: moment.intent, title: title, body: body);
-  if (!context.mounted) return;
-  final state = ref.read(intentControllerProvider);
-  if (state.hasError) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(state.error.toString())));
   }
 }
 
@@ -231,18 +122,4 @@ Future<void> _confirmDelete(
   );
   if (confirmed != true) return;
   await ref.read(intentControllerProvider.notifier).deleteJournal(intent);
-}
-
-InputDecoration _editDecoration(String hint) {
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: GoogleFonts.notoSansSc(fontSize: 13, color: AppColors.textMuted),
-    filled: true,
-    fillColor: AppColors.background,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide.none,
-    ),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-  );
 }

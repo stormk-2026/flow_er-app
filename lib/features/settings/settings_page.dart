@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/focus/time_rewind_copy.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/day_night_theme.dart';
+import '../../providers/app_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/time_rewind_provider.dart';
 
@@ -38,6 +40,21 @@ class SettingsPage extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           Text(
+            '外观',
+            style: GoogleFonts.notoSansSc(
+              fontSize: 12,
+              letterSpacing: 2,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _ThemeModeTile(
+            value: settings.themeMode,
+            onChanged: (mode) =>
+                ref.read(settingsProvider.notifier).setThemeMode(mode),
+          ),
+          const SizedBox(height: 28),
+          Text(
             '专注',
             style: GoogleFonts.notoSansSc(
               fontSize: 12,
@@ -50,9 +67,18 @@ class SettingsPage extends ConsumerWidget {
             title: '扣置手机进入专注',
             subtitle: '开启后，手机静置于桌面也可进入心流；默认仅轻击三下',
             value: settings.sensorFocusEnabled,
-            onChanged: (v) => ref
-                .read(settingsProvider.notifier)
-                .setSensorFocusEnabled(v),
+            onChanged: (v) =>
+                ref.read(settingsProvider.notifier).setSensorFocusEnabled(v),
+          ),
+          const SizedBox(height: 12),
+          _SettingsSwitchTile(
+            title: '声音',
+            subtitle: '开启后播放点击、心笺与心流白噪音',
+            value: settings.soundEnabled,
+            onChanged: (v) async {
+              await ref.read(settingsProvider.notifier).setSoundEnabled(v);
+              await ref.read(appAudioServiceProvider).setEnabled(v);
+            },
           ),
           const SizedBox(height: 28),
           Text(
@@ -65,6 +91,63 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeModeTile extends StatelessWidget {
+  const _ThemeModeTile({required this.value, required this.onChanged});
+
+  final AppThemeMode value;
+  final ValueChanged<AppThemeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: _settingsCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SettingsTextBlock(
+            title: '界面模式',
+            subtitle: '自动会在 06:00 / 18:00 切换，也可以手动指定',
+          ),
+          const SizedBox(height: 14),
+          SegmentedButton<AppThemeMode>(
+            segments: AppThemeMode.values
+                .map(
+                  (mode) => ButtonSegment<AppThemeMode>(
+                    value: mode,
+                    label: Text(mode.label),
+                  ),
+                )
+                .toList(),
+            selected: {value},
+            onSelectionChanged: (selection) => onChanged(selection.first),
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                return states.contains(WidgetState.selected)
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary;
+              }),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                return states.contains(WidgetState.selected)
+                    ? AppColors.accentSoft
+                    : Colors.transparent;
+              }),
+              side: WidgetStatePropertyAll(
+                BorderSide(color: AppColors.divider),
+              ),
+              textStyle: WidgetStatePropertyAll(
+                GoogleFonts.notoSansSc(fontSize: 13),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -91,12 +174,14 @@ class _SettingsSwitchTile extends StatelessWidget {
       decoration: _settingsCardDecoration,
       child: Row(
         children: [
-          Expanded(child: _SettingsTextBlock(title: title, subtitle: subtitle)),
+          Expanded(
+            child: _SettingsTextBlock(title: title, subtitle: subtitle),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF516356),
-            activeTrackColor: const Color(0xFF516356).withValues(alpha: 0.35),
+            activeThumbColor: AppColors.primaryAction,
+            activeTrackColor: AppColors.primaryAction.withValues(alpha: 0.35),
           ),
         ],
       ),
@@ -144,18 +229,16 @@ class _TimeRewindTile extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: TextButton(
-              onPressed: canRewind
-                  ? () => _onRewindTap(context, ref)
-                  : null,
+              onPressed: canRewind ? () => _onRewindTap(context, ref) : null,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF516356),
+                foregroundColor: AppColors.primaryAction,
                 disabledForegroundColor: AppColors.textMuted,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
                     color: canRewind
-                        ? const Color(0xFF516356).withValues(alpha: 0.35)
+                        ? AppColors.primaryAction.withValues(alpha: 0.35)
                         : AppColors.divider,
                   ),
                 ),
@@ -172,14 +255,15 @@ class _TimeRewindTile extends ConsumerWidget {
   }
 
   Future<void> _onRewindTap(BuildContext context, WidgetRef ref) async {
-    final count =
-        await ref.read(timeRewindProvider.notifier).previewRewindableCount();
+    final count = await ref
+        .read(timeRewindProvider.notifier)
+        .previewRewindableCount();
     if (!context.mounted) return;
 
     if (count == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('近 30 分钟内没有可回溯的失败专注')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('近 30 分钟内没有可回溯的失败专注')));
       return;
     }
 
@@ -209,7 +293,7 @@ class _TimeRewindTile extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
               '回溯',
-              style: GoogleFonts.notoSansSc(color: const Color(0xFF516356)),
+              style: GoogleFonts.notoSansSc(color: AppColors.primaryAction),
             ),
           ),
         ],
@@ -218,18 +302,14 @@ class _TimeRewindTile extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    final error =
-        await ref.read(timeRewindProvider.notifier).rewindRecentFailures();
+    final error = await ref
+        .read(timeRewindProvider.notifier)
+        .rewindRecentFailures();
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          error ??
-              '已回溯 $count 次失败专注，不计入统计',
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error ?? '已回溯 $count 次失败专注，不计入统计')));
   }
 }
 
@@ -261,7 +341,7 @@ void _showTimeRewindHelp(BuildContext context) {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFF516356).withValues(alpha: 0.06),
+                color: AppColors.primaryAction.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -270,7 +350,7 @@ void _showTimeRewindHelp(BuildContext context) {
                 style: GoogleFonts.notoSansSc(
                   fontSize: 13,
                   height: 1.7,
-                  color: const Color(0xFF516356),
+                  color: AppColors.primaryAction,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -288,14 +368,15 @@ void _showTimeRewindHelp(BuildContext context) {
   );
 }
 
-final _settingsCardDecoration = BoxDecoration(
-  color: AppColors.surface,
+BoxDecoration get _settingsCardDecoration => BoxDecoration(
+  color: AppColors.glassSurface,
   borderRadius: BorderRadius.circular(16),
+  border: Border.all(color: AppColors.glassBorder),
   boxShadow: [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.03),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
+      color: Colors.black.withValues(alpha: 0.05),
+      blurRadius: 14,
+      offset: const Offset(0, 5),
     ),
   ],
 );
