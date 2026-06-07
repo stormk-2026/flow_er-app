@@ -25,9 +25,23 @@ class IntentSyncService {
 
   /// 首次不带 since 全量拉取；之后带 since 增量拉取。
   Future<void> pullAll() async {
+    await _pull(useSince: true, updateCheckpoint: true);
+  }
+
+  /// 用于刷新异步生成的字段（如 ai_comment）。
+  ///
+  /// 不推进 since，避免全量响应不含墓碑时错过其他端的删除变更。
+  Future<void> refreshSnapshot() async {
+    await _pull(useSince: false, updateCheckpoint: false);
+  }
+
+  Future<void> _pull({
+    required bool useSince,
+    required bool updateCheckpoint,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final since = prefs.getString(_intentLastSyncedAtKey);
+      final since = useSince ? prefs.getString(_intentLastSyncedAtKey) : null;
       final resp = await _dio.get<Map<String, dynamic>>(
         '/api/v1/intents',
         queryParameters: since == null ? null : {'since': since},
@@ -42,7 +56,7 @@ class IntentSyncService {
       }
 
       final serverTime = resp.data?['server_time'] as String?;
-      if (serverTime != null && serverTime.isNotEmpty) {
+      if (updateCheckpoint && serverTime != null && serverTime.isNotEmpty) {
         await prefs.setString(_intentLastSyncedAtKey, serverTime);
       }
     } on DioException {
@@ -102,41 +116,6 @@ class IntentSyncService {
     }
   }
 
-  Future<void> updateIntent(FlowIntent intent) async {
-    final serverId = intent.serverId;
-    if (serverId == null) {
-      await pushIntent(intent);
-      return;
-    }
-
-    try {
-      final tags = _decodeList(intent.tags);
-      final attachments = _decodeList(intent.attachments);
-      final resp = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/intents/$serverId',
-        data: {
-          'title': intent.title,
-          'raw_input': intent.rawInput,
-          'note': intent.note,
-          'due_at': intent.dueAt?.toIso8601String(),
-          'priority': intent.priority,
-          'tags': tags,
-          'attachments': attachments,
-          'status': intent.status,
-          'updated_at': intent.updatedAt.toIso8601String(),
-        },
-      );
-      final item = _extractIntent(resp.data, serverId);
-      if (item != null) {
-        await _repo.upsertFromServer(item);
-      } else {
-        await pullAll();
-      }
-    } on DioException {
-      // 本地已更新，后续同步时会以本地数据继续展示。
-    }
-  }
-
   Future<void> deleteIntent(FlowIntent intent) async {
     final serverId = intent.serverId;
     await _repo.deleteLocal(intent.id);
@@ -169,21 +148,6 @@ class IntentSyncService {
       }
     }
     return null;
-  }
-
-  Map<String, dynamic>? _extractIntent(
-    Map<String, dynamic>? data,
-    String serverId,
-  ) {
-    if (data == null) return null;
-    if (data['id'] == serverId) return data;
-    final item = data['item'];
-    if (item is Map<String, dynamic> && item['id'] == serverId) return item;
-    final intent = data['intent'];
-    if (intent is Map<String, dynamic> && intent['id'] == serverId) {
-      return intent;
-    }
-    return _findCreatedItem(data, serverId);
   }
 
   List<dynamic> _decodeList(String raw) {

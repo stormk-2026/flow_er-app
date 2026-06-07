@@ -105,6 +105,17 @@ class $FlowIntentsTable extends FlowIntents
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
+  static const VerificationMeta _aiCommentMeta = const VerificationMeta(
+    'aiComment',
+  );
+  @override
+  late final GeneratedColumn<String> aiComment = GeneratedColumn<String>(
+    'ai_comment',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -148,6 +159,7 @@ class $FlowIntentsTable extends FlowIntents
     priority,
     tags,
     attachments,
+    aiComment,
     status,
     createdAt,
     updatedAt,
@@ -222,6 +234,12 @@ class $FlowIntentsTable extends FlowIntents
         ),
       );
     }
+    if (data.containsKey('ai_comment')) {
+      context.handle(
+        _aiCommentMeta,
+        aiComment.isAcceptableOrUnknown(data['ai_comment']!, _aiCommentMeta),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -289,6 +307,10 @@ class $FlowIntentsTable extends FlowIntents
         DriftSqlType.string,
         data['${effectivePrefix}attachments'],
       )!,
+      aiComment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ai_comment'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -320,6 +342,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   final String priority;
   final String tags;
   final String attachments;
+  final String? aiComment;
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -333,6 +356,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     required this.priority,
     required this.tags,
     required this.attachments,
+    this.aiComment,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
@@ -355,6 +379,9 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     map['priority'] = Variable<String>(priority);
     map['tags'] = Variable<String>(tags);
     map['attachments'] = Variable<String>(attachments);
+    if (!nullToAbsent || aiComment != null) {
+      map['ai_comment'] = Variable<String>(aiComment);
+    }
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -376,6 +403,9 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
       priority: Value(priority),
       tags: Value(tags),
       attachments: Value(attachments),
+      aiComment: aiComment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aiComment),
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -397,6 +427,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
       priority: serializer.fromJson<String>(json['priority']),
       tags: serializer.fromJson<String>(json['tags']),
       attachments: serializer.fromJson<String>(json['attachments']),
+      aiComment: serializer.fromJson<String?>(json['aiComment']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -415,6 +446,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
       'priority': serializer.toJson<String>(priority),
       'tags': serializer.toJson<String>(tags),
       'attachments': serializer.toJson<String>(attachments),
+      'aiComment': serializer.toJson<String?>(aiComment),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -431,6 +463,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     String? priority,
     String? tags,
     String? attachments,
+    Value<String?> aiComment = const Value.absent(),
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -444,6 +477,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     priority: priority ?? this.priority,
     tags: tags ?? this.tags,
     attachments: attachments ?? this.attachments,
+    aiComment: aiComment.present ? aiComment.value : this.aiComment,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -461,6 +495,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
       attachments: data.attachments.present
           ? data.attachments.value
           : this.attachments,
+      aiComment: data.aiComment.present ? data.aiComment.value : this.aiComment,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -479,6 +514,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
           ..write('priority: $priority, ')
           ..write('tags: $tags, ')
           ..write('attachments: $attachments, ')
+          ..write('aiComment: $aiComment, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -497,6 +533,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     priority,
     tags,
     attachments,
+    aiComment,
     status,
     createdAt,
     updatedAt,
@@ -514,6 +551,7 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
           other.priority == this.priority &&
           other.tags == this.tags &&
           other.attachments == this.attachments &&
+          other.aiComment == this.aiComment &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -529,6 +567,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
   final Value<String> priority;
   final Value<String> tags;
   final Value<String> attachments;
+  final Value<String?> aiComment;
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -542,6 +581,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     this.priority = const Value.absent(),
     this.tags = const Value.absent(),
     this.attachments = const Value.absent(),
+    this.aiComment = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -556,6 +596,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     this.priority = const Value.absent(),
     this.tags = const Value.absent(),
     this.attachments = const Value.absent(),
+    this.aiComment = const Value.absent(),
     this.status = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -573,6 +614,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     Expression<String>? priority,
     Expression<String>? tags,
     Expression<String>? attachments,
+    Expression<String>? aiComment,
     Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -587,6 +629,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
       if (priority != null) 'priority': priority,
       if (tags != null) 'tags': tags,
       if (attachments != null) 'attachments': attachments,
+      if (aiComment != null) 'ai_comment': aiComment,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -603,6 +646,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     Value<String>? priority,
     Value<String>? tags,
     Value<String>? attachments,
+    Value<String?>? aiComment,
     Value<String>? status,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -617,6 +661,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
       priority: priority ?? this.priority,
       tags: tags ?? this.tags,
       attachments: attachments ?? this.attachments,
+      aiComment: aiComment ?? this.aiComment,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -653,6 +698,9 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     if (attachments.present) {
       map['attachments'] = Variable<String>(attachments.value);
     }
+    if (aiComment.present) {
+      map['ai_comment'] = Variable<String>(aiComment.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -677,6 +725,7 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
           ..write('priority: $priority, ')
           ..write('tags: $tags, ')
           ..write('attachments: $attachments, ')
+          ..write('aiComment: $aiComment, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1233,6 +1282,7 @@ typedef $$FlowIntentsTableCreateCompanionBuilder =
       Value<String> priority,
       Value<String> tags,
       Value<String> attachments,
+      Value<String?> aiComment,
       Value<String> status,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -1248,6 +1298,7 @@ typedef $$FlowIntentsTableUpdateCompanionBuilder =
       Value<String> priority,
       Value<String> tags,
       Value<String> attachments,
+      Value<String?> aiComment,
       Value<String> status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -1304,6 +1355,11 @@ class $$FlowIntentsTableFilterComposer
 
   ColumnFilters<String> get attachments => $composableBuilder(
     column: $table.attachments,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get aiComment => $composableBuilder(
+    column: $table.aiComment,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1377,6 +1433,11 @@ class $$FlowIntentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get aiComment => $composableBuilder(
+    column: $table.aiComment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -1431,6 +1492,9 @@ class $$FlowIntentsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get aiComment =>
+      $composableBuilder(column: $table.aiComment, builder: (column) => column);
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -1481,6 +1545,7 @@ class $$FlowIntentsTableTableManager
                 Value<String> priority = const Value.absent(),
                 Value<String> tags = const Value.absent(),
                 Value<String> attachments = const Value.absent(),
+                Value<String?> aiComment = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -1494,6 +1559,7 @@ class $$FlowIntentsTableTableManager
                 priority: priority,
                 tags: tags,
                 attachments: attachments,
+                aiComment: aiComment,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -1509,6 +1575,7 @@ class $$FlowIntentsTableTableManager
                 Value<String> priority = const Value.absent(),
                 Value<String> tags = const Value.absent(),
                 Value<String> attachments = const Value.absent(),
+                Value<String?> aiComment = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -1522,6 +1589,7 @@ class $$FlowIntentsTableTableManager
                 priority: priority,
                 tags: tags,
                 attachments: attachments,
+                aiComment: aiComment,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

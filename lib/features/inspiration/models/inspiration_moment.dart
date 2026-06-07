@@ -53,6 +53,7 @@ class InspirationMoment {
     required this.variant,
     required this.tone,
     required this.createdAt,
+    this.aiComment,
     this.localImagePaths = const [],
   });
 
@@ -67,10 +68,12 @@ class InspirationMoment {
   final InspirationVariant variant;
   final InspirationTone tone;
   final DateTime createdAt;
+  final String? aiComment;
   final List<String> localImagePaths;
 
   bool get hasImage => localImagePaths.isNotEmpty;
   bool get isExpanded => title.trim().isNotEmpty && body.trim().isNotEmpty;
+  bool get hasAiComment => aiComment?.trim().isNotEmpty == true;
 
   factory InspirationMoment.fromFlowIntent(FlowIntent intent) {
     const badges = ['念', '拾', '笺', '息', '光', '观'];
@@ -108,6 +111,7 @@ class InspirationMoment {
       ),
       tone: _toneFor(category: category, seed: seed),
       createdAt: intent.createdAt,
+      aiComment: intent.aiComment?.trim(),
       localImagePaths: imagePaths,
     );
   }

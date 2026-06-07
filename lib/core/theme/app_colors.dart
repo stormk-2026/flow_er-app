@@ -37,7 +37,7 @@ abstract final class AppColors {
       : const [Color(0xFFEDF2EF), Color(0xFFE8DDD8)];
 
   static Color get navCapsule =>
-      _night ? const Color(0x66181C18) : const Color(0xE6FFFFFF);
+      _night ? const Color(0xB31A1D19) : const Color(0xE6FFFFFF);
   static Color get navIcon =>
       _night ? const Color(0xFF9FA59A) : const Color(0xFF6B6B66);
   static Color get navActive =>

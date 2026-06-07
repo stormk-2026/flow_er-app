@@ -1,4 +1,4 @@
-package com.stormg.flower.flow_er
+package com.stormg.flower
 
 import io.flutter.embedding.android.FlutterActivity
 

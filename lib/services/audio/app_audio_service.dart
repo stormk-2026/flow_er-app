@@ -89,6 +89,21 @@ class AppAudioService {
     }
   }
 
+  Future<void> pauseFlowSilently() async {
+    if (!_flowActive) return;
+    await stopAmbient();
+    try {
+      await _transitionPlayer.stop();
+    } catch (error) {
+      _logFailure('stop transition', error);
+    }
+  }
+
+  Future<void> resumeFlowAmbient() async {
+    if (!_flowActive || !_enabled || _flowMuted) return;
+    await _startAmbient();
+  }
+
   Future<bool> toggleFlowMuted() async {
     final muted = !_flowMuted;
     await setFlowMuted(muted);

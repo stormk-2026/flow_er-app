@@ -19,6 +19,7 @@ class FlowIntents extends Table {
   TextColumn get priority => text().withDefault(const Constant('medium'))();
   TextColumn get tags => text().withDefault(const Constant('[]'))();
   TextColumn get attachments => text().withDefault(const Constant('[]'))();
+  TextColumn get aiComment => text().nullable()();
   TextColumn get status => text().withDefault(const Constant('open'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -42,7 +43,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +59,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await migrator.addColumn(focusSessions, focusSessions.serverId);
+      }
+      if (from < 6) {
+        await migrator.addColumn(flowIntents, flowIntents.aiComment);
       }
     },
   );

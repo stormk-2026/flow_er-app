@@ -41,6 +41,26 @@ class InspirationFlowPage extends ConsumerWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_outlined,
+                      size: 14,
+                      color: AppColors.textSecondary.withValues(alpha: 0.72),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '双击心笺卡片，听见背后的回响',
+                      style: GoogleFonts.notoSansSc(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppColors.textSecondary.withValues(alpha: 0.76),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -70,6 +90,7 @@ class InspirationFlowPage extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final moment = moments[index];
                   return InspirationMomentCard(
+                    key: ValueKey(moment.stableKey),
                     moment: moment,
                     onDelete: () => _confirmDelete(context, ref, moment.intent),
                   );

@@ -131,7 +131,9 @@ class IntentController extends AsyncNotifier<void> {
             imagePaths: attachments,
           );
       if (intent != null) {
-        await ref.read(intentSyncServiceProvider).pushIntent(intent);
+        final syncService = ref.read(intentSyncServiceProvider);
+        await syncService.pushIntent(intent);
+        unawaited(_refreshGeneratedComment(syncService));
         await ref
             .read(appAudioServiceProvider)
             .setEnabled(ref.read(settingsProvider).soundEnabled);
@@ -147,6 +149,19 @@ class IntentController extends AsyncNotifier<void> {
       await ref.read(intentSyncServiceProvider).deleteIntent(intent);
       invalidateAnalyticsProviders(ref);
     });
+  }
+
+  Future<void> _refreshGeneratedComment(IntentSyncService syncService) async {
+    const delays = [
+      Duration(seconds: 2),
+      Duration(seconds: 5),
+      Duration(seconds: 10),
+    ];
+
+    for (final delay in delays) {
+      await Future<void>.delayed(delay);
+      await syncService.refreshSnapshot();
+    }
   }
 }
 

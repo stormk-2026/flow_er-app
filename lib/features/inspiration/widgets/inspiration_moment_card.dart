@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,7 +16,85 @@ class InspirationMomentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _UnifiedGlassMomentCard(moment: moment, onDelete: onDelete);
+    return _FlipMomentCard(moment: moment, onDelete: onDelete);
+  }
+}
+
+class _FlipMomentCard extends StatefulWidget {
+  const _FlipMomentCard({required this.moment, this.onDelete});
+
+  final InspirationMoment moment;
+  final VoidCallback? onDelete;
+
+  @override
+  State<_FlipMomentCard> createState() => _FlipMomentCardState();
+}
+
+class _FlipMomentCardState extends State<_FlipMomentCard> {
+  bool _showBack = false;
+
+  @override
+  void didUpdateWidget(covariant _FlipMomentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.moment.stableKey != widget.moment.stableKey) {
+      _showBack = false;
+    }
+  }
+
+  void _toggleSide() {
+    setState(() => _showBack = !_showBack);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onDoubleTap: _toggleSide,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Visibility(
+            visible: false,
+            maintainSize: true,
+            maintainState: true,
+            maintainAnimation: true,
+            child: _UnifiedGlassMomentCard(
+              moment: widget.moment,
+              onDelete: widget.onDelete,
+            ),
+          ),
+          Positioned.fill(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: _showBack ? math.pi : 0),
+              duration: const Duration(milliseconds: 460),
+              curve: Curves.easeInOutCubic,
+              builder: (context, angle, child) {
+                final showingBack = angle > math.pi / 2;
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(angle),
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.rotationY(showingBack ? math.pi : 0),
+                    child: showingBack
+                        ? _MomentBackCard(
+                            moment: widget.moment,
+                            onDelete: widget.onDelete,
+                          )
+                        : _UnifiedGlassMomentCard(
+                            moment: widget.moment,
+                            onDelete: widget.onDelete,
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -30,6 +109,7 @@ class _UnifiedGlassMomentCard extends StatelessWidget {
     const radius = 24.0;
     final hasTitle = moment.title.trim().isNotEmpty;
     final hasImages = moment.localImagePaths.isNotEmpty;
+    final isPlainText = !hasTitle && !hasImages;
     final night = isNightTheme;
 
     return RepaintBoundary(
@@ -53,76 +133,233 @@ class _UnifiedGlassMomentCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: night
-                  ? AppColors.surface.withValues(alpha: 0.62)
-                  : Colors.white.withValues(alpha: 0.48),
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: night ? 0.1 : 0.62),
-                width: 1,
-              ),
-            ),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _CardHeader(moment: moment, onDelete: onDelete),
-                      const SizedBox(height: 8),
-                      if (hasTitle) ...[
-                        Text(
-                          moment.title,
-                          style: GoogleFonts.notoSansSc(
-                            fontSize: 17,
-                            height: 1.38,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      Text(
-                        moment.body,
-                        style: GoogleFonts.notoSansSc(
-                          fontSize: hasTitle ? 14 : 16,
-                          height: 1.72,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textPrimary.withValues(alpha: 0.78),
-                        ),
-                      ),
-                      if (hasImages) ...[
-                        const SizedBox(height: 14),
-                        moment.localImagePaths.length == 1
-                            ? _PhotoHero(paths: moment.localImagePaths)
-                            : _PhotoGrid(paths: moment.localImagePaths),
-                      ],
-                    ],
-                  ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 172),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: night
+                    ? AppColors.surface.withValues(alpha: 0.62)
+                    : Colors.white.withValues(alpha: 0.48),
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: night ? 0.1 : 0.62),
+                  width: 1,
                 ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(radius),
-                        border: Border.all(
-                          color: Colors.white.withValues(
-                            alpha: night ? 0.08 : 0.28,
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _CardHeader(moment: moment, onDelete: onDelete),
+                        const SizedBox(height: 8),
+                        if (hasTitle) ...[
+                          Text(
+                            moment.title,
+                            style: GoogleFonts.notoSansSc(
+                              fontSize: 17,
+                              height: 1.38,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        _CardBodyText(
+                          text: moment.body,
+                          hasTitle: hasTitle,
+                          centered: isPlainText,
+                        ),
+                        if (hasImages) ...[
+                          const SizedBox(height: 14),
+                          moment.localImagePaths.length == 1
+                              ? _PhotoHero(paths: moment.localImagePaths)
+                              : _PhotoGrid(paths: moment.localImagePaths),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(radius),
+                          border: Border.all(
+                            color: Colors.white.withValues(
+                              alpha: night ? 0.08 : 0.28,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _MomentBackCard extends StatelessWidget {
+  const _MomentBackCard({required this.moment, this.onDelete});
+
+  final InspirationMoment moment;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 24.0;
+    final night = isNightTheme;
+    final comment = moment.aiComment?.trim();
+    final text = comment?.isNotEmpty == true
+        ? comment!
+        : '流境正在等一阵风，把这张心笺背后的回声带回来。';
+
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: night ? 0.16 : 0.075),
+              blurRadius: 24,
+              offset: const Offset(0, 9),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: night
+                  ? AppColors.surface.withValues(alpha: 0.66)
+                  : Colors.white.withValues(alpha: 0.52),
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: night ? 0.1 : 0.56),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '回响',
+                        style: GoogleFonts.notoSansSc(
+                          fontSize: 12,
+                          height: 1,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textMuted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (onDelete != null)
+                        _CardMenu(
+                          tint: AppColors.textMuted,
+                          onDelete: onDelete,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.notoSerifSc(
+                            fontSize: 18,
+                            height: 1.72,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary.withValues(
+                              alpha: 0.84,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Align(
+                  //   alignment: Alignment.centerRight,
+                  //   child: Text(
+                  //     '回响',
+                  //     style: GoogleFonts.notoSansSc(
+                  //       fontSize: 11,
+                  //       height: 1,
+                  //       color: AppColors.textMuted,
+                  //     ),
+                  //   ),
+                  // ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CardBodyText extends StatelessWidget {
+  const _CardBodyText({
+    required this.text,
+    required this.hasTitle,
+    required this.centered,
+  });
+
+  final String text;
+  final bool hasTitle;
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!centered) {
+      return Text(
+        text,
+        style: GoogleFonts.notoSansSc(
+          fontSize: hasTitle ? 14 : 16,
+          height: 1.72,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textPrimary.withValues(alpha: 0.78),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 104,
+      child: Center(
+        child: SingleChildScrollView(
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSerifSc(
+              fontSize: _plainTextSize(text),
+              height: 1.68,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary.withValues(alpha: 0.82),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  double _plainTextSize(String value) {
+    final length = value.characters.length;
+    if (length <= 14) return 22;
+    if (length <= 28) return 19;
+    if (length <= 48) return 17;
+    return 15;
   }
 }
 
@@ -134,23 +371,23 @@ class _CardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = moment.createdAt;
+    final date = moment.createdAt.toLocal();
     final dateText =
-        '${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+        '${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           dateText,
           style: GoogleFonts.playfairDisplay(
-            fontSize: 18,
+            fontSize: 16,
             height: 1,
             fontWeight: FontWeight.w500,
             color: AppColors.textPrimary.withValues(alpha: 0.72),
             letterSpacing: 0.2,
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(child: _HeaderTags(moment: moment)),
         if (onDelete != null)
           _CardMenu(tint: AppColors.textMuted, onDelete: onDelete),
@@ -169,25 +406,43 @@ class _HeaderTags extends StatelessWidget {
     return Wrap(
       spacing: 6,
       runSpacing: 4,
-      children: moment.tags.take(2).map((tag) {
+      children: moment.tags.take(1).map((tag) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
           decoration: BoxDecoration(
-            color: AppColors.accentSoft.withValues(alpha: 0.68),
-            borderRadius: BorderRadius.circular(99),
+            color: AppColors.accentSoft.withValues(
+              alpha: isNightTheme ? 0.9 : 0.82,
+            ),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: AppColors.glassBorder.withValues(alpha: 0.72),
+              color: AppColors.primaryAction.withValues(
+                alpha: isNightTheme ? 0.22 : 0.18,
+              ),
             ),
           ),
-          child: Text(
-            tag,
-            style: GoogleFonts.notoSansSc(
-              fontSize: 11,
-              height: 1.15,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.2,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 2,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryAction.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                tag,
+                style: GoogleFonts.notoSerifSc(
+                  fontSize: 12,
+                  height: 1,
+                  color: AppColors.textPrimary.withValues(alpha: 0.76),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
           ),
         );
       }).toList(),

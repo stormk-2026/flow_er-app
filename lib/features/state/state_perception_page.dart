@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/focus/focus_entry_hint.dart';
 import '../../core/greeting/home_greeting.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/day_night_theme.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -20,7 +21,9 @@ enum _FocusTrigger { tap, sensor }
 enum _FocusPhase { idle, blurringIn, focused, blurringOut }
 
 const _focusMomentRefresh = Duration(minutes: 30);
+const _minimumRecordedFocus = Duration(seconds: 15);
 const _fallbackFocusMoment = '先把此刻放轻。\n你已经在回到自己。';
+const _returnFromAwayHint = '刚才有一阵风经过，这一段不替你记入入静。';
 
 class StatePerceptionPage extends ConsumerStatefulWidget {
   const StatePerceptionPage({
@@ -43,7 +46,7 @@ class StatePerceptionPage extends ConsumerStatefulWidget {
 }
 
 class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _blurController;
 
   _FocusPhase _phase = _FocusPhase.idle;
@@ -63,11 +66,17 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
   // 专注计时
   DateTime? _focusStartedAt;
+  DateTime? _activeSegmentStartedAt;
+  Duration _accumulatedActiveDuration = Duration.zero;
   Timer? _momentTimer;
   String? _currentMoment;
+  int _sessionJournalCount = 0;
+  int _awayCount = 0;
+  bool _wasAwayDuringFlow = false;
 
   bool _showCapture = false;
   bool _flowMuted = false;
+  bool _mediaPickerActive = false;
 
   // 点击波纹注入
   final _tapRippleNotifier = ValueNotifier<int>(0);
@@ -79,6 +88,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _audioService = ref.read(appAudioServiceProvider);
 
     _blurController = AnimationController(
@@ -99,6 +109,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _setShellHidden(false);
     unawaited(_audioService.endFlowSilently());
     _blurController.dispose();
@@ -106,6 +117,16 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     _motionTimer?.cancel();
     _momentTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onAppResumed();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _onAppBackgrounded();
+    }
   }
 
   @override
@@ -122,23 +143,33 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   }
 
   void _forceResetToIdle() {
+    unawaited(_audioService.endFlowSilently());
+    if (_phase != _FocusPhase.idle) {
+      setState(() => _resetFocusState(resetBlur: true));
+    }
+    _setShellHidden(false);
+  }
+
+  void _resetFocusState({required bool resetBlur}) {
     _stillTimer?.cancel();
     _motionTimer?.cancel();
     _momentTimer?.cancel();
-    _blurController.stop();
-    _blurController.value = 0;
-    unawaited(_audioService.endFlowSilently());
-    if (_phase != _FocusPhase.idle) {
-      setState(() {
-        _phase = _FocusPhase.idle;
-        _trigger = null;
-        _showCapture = false;
-        _currentMoment = null;
-        _tapCount = 0;
-        _focusStartedAt = null;
-      });
+    if (resetBlur) {
+      _blurController.stop();
+      _blurController.value = 0;
     }
-    _setShellHidden(false);
+    _phase = _FocusPhase.idle;
+    _trigger = null;
+    _showCapture = false;
+    _currentMoment = null;
+    _tapCount = 0;
+    _focusStartedAt = null;
+    _activeSegmentStartedAt = null;
+    _accumulatedActiveDuration = Duration.zero;
+    _sessionJournalCount = 0;
+    _awayCount = 0;
+    _wasAwayDuringFlow = false;
+    _mediaPickerActive = false;
   }
 
   void _onTabActivated() {
@@ -152,6 +183,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
         _sensorReady = true;
       }
     });
+    _onAppResumed();
   }
 
   void _onTabDeactivated() {
@@ -162,19 +194,31 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     unawaited(_audioService.endFlowSilently());
 
     if (_phase != _FocusPhase.idle) {
-      _recordFocusSessionIfNeeded();
-      _blurController.stop();
-      _blurController.value = 0;
-      setState(() {
-        _phase = _FocusPhase.idle;
-        _trigger = null;
-        _showCapture = false;
-        _currentMoment = null;
-        _tapCount = 0;
-        _focusStartedAt = null;
-      });
+      final report = _buildFocusReport();
+      _recordFocusSessionIfNeeded(report);
+      setState(() => _resetFocusState(resetBlur: true));
     }
     _setShellHidden(false);
+  }
+
+  void _onAppBackgrounded() {
+    if (_phase == _FocusPhase.idle) return;
+    if (_mediaPickerActive) return;
+    _settleActiveSegment();
+    _awayCount++;
+    _wasAwayDuringFlow = true;
+    _showCapture = false;
+    _momentTimer?.cancel();
+    unawaited(_audioService.pauseFlowSilently());
+  }
+
+  void _onAppResumed() {
+    if (_mediaPickerActive) return;
+    if (_phase != _FocusPhase.focused || !_wasAwayDuringFlow) return;
+    _resumeActiveSegment();
+    _wasAwayDuringFlow = false;
+    unawaited(_audioService.resumeFlowAmbient());
+    _showGentleHint(_returnFromAwayHint);
   }
 
   // ── 三击检测 ──────────────────────────────────────────────────────────────
@@ -250,6 +294,11 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       _trigger = trigger;
       _showCapture = false;
       _currentMoment = null;
+      _activeSegmentStartedAt = null;
+      _accumulatedActiveDuration = Duration.zero;
+      _sessionJournalCount = 0;
+      _awayCount = 0;
+      _wasAwayDuringFlow = false;
     });
     _setShellHidden(true);
     unawaited(_audioService.enterFlow());
@@ -258,6 +307,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     if (!mounted) return;
 
     _focusStartedAt = DateTime.now();
+    _resumeActiveSegment();
     setState(() => _phase = _FocusPhase.focused);
     _startMomentTimer();
   }
@@ -266,7 +316,8 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   Future<void> _exitFocus() async {
     if (!mounted) return;
     _momentTimer?.cancel();
-    _recordFocusSessionIfNeeded();
+    final report = _buildFocusReport();
+    _recordFocusSessionIfNeeded(report);
     unawaited(_audioService.exitFlow());
     setState(() {
       _phase = _FocusPhase.blurringOut;
@@ -280,8 +331,12 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       _phase = _FocusPhase.idle;
       _trigger = null;
       _focusStartedAt = null;
+      _sessionJournalCount = 0;
     });
     _setShellHidden(false);
+    if (report != null && report.shouldShow) {
+      unawaited(_showFocusReport(report));
+    }
   }
 
   Future<void> _toggleFlowMuted() async {
@@ -295,22 +350,37 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     widget.onShellHide(hide);
   }
 
-  void _recordFocusSessionIfNeeded() {
+  _FocusReport? _buildFocusReport() {
     final started = _focusStartedAt;
     final trigger = _trigger;
-    if (started == null || trigger == null) return;
+    if (started == null || trigger == null) return null;
 
+    _settleActiveSegment();
     final ended = DateTime.now();
+    return _FocusReport(
+      startedAt: started,
+      endedAt: ended,
+      duration: _accumulatedActiveDuration,
+      trigger: trigger,
+      journalCount: _sessionJournalCount,
+      awayCount: _awayCount,
+    );
+  }
+
+  void _recordFocusSessionIfNeeded(_FocusReport? report) {
+    if (report == null || !report.shouldRecord) return;
+
     _focusStartedAt = null;
-    final triggerType = trigger == _FocusTrigger.tap ? 'tap' : 'sensor';
+    final triggerType = report.trigger == _FocusTrigger.tap ? 'tap' : 'sensor';
 
     unawaited(
       ref
           .read(focusSessionRepositoryProvider)
           .recordSession(
-            startedAt: started,
-            endedAt: ended,
+            startedAt: report.startedAt,
+            endedAt: report.endedAt,
             triggerType: triggerType,
+            durationSecondsOverride: report.duration.inSeconds,
           )
           .then((session) async {
             await ref
@@ -320,6 +390,38 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
             invalidateAnalyticsWidgetProviders(ref);
           }),
     );
+  }
+
+  Future<void> _showFocusReport(_FocusReport report) async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FocusReportSheet(report: report),
+    );
+  }
+
+  void _resumeActiveSegment() {
+    _activeSegmentStartedAt ??= DateTime.now();
+    _startMomentTimer();
+  }
+
+  void _settleActiveSegment() {
+    final segmentStarted = _activeSegmentStartedAt;
+    if (segmentStarted == null) return;
+    final now = DateTime.now();
+    if (now.isAfter(segmentStarted)) {
+      _accumulatedActiveDuration += now.difference(segmentStarted);
+    }
+    _activeSegmentStartedAt = null;
+  }
+
+  Duration _activeDurationSnapshot() {
+    final segmentStarted = _activeSegmentStartedAt;
+    if (segmentStarted == null) return _accumulatedActiveDuration;
+    final now = DateTime.now();
+    if (!now.isAfter(segmentStarted)) return _accumulatedActiveDuration;
+    return _accumulatedActiveDuration + now.difference(segmentStarted);
   }
 
   void _startMomentTimer() {
@@ -335,12 +437,32 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     });
   }
 
+  void _showGentleHint(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
   Future<void> _refreshFocusMoment() async {
     final startedAt = _focusStartedAt;
     final trigger = _trigger;
     if (startedAt == null || trigger == null) return;
 
-    final elapsedSeconds = DateTime.now().difference(startedAt).inSeconds;
+    final elapsedSeconds = _activeDurationSnapshot().inSeconds;
     final triggerType = trigger == _FocusTrigger.tap ? 'tap' : 'sensor';
     try {
       final text = await ref
@@ -373,10 +495,34 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
   void _dismissCapture() => setState(() => _showCapture = false);
 
+  void _setMediaPickerActive(bool active) {
+    if (_mediaPickerActive == active) return;
+    _mediaPickerActive = active;
+  }
+
   Future<void> _onCaptureSubmitting(Future<void> saveFuture) async {
     setState(() => _showCapture = false);
     await saveFuture;
     if (!mounted) return;
+    final state = ref.read(intentControllerProvider);
+    if (state.hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            state.error.toString(),
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() => _sessionJournalCount++);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('已归入心笺', style: TextStyle(color: AppColors.textPrimary)),
@@ -455,6 +601,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
                   ThoughtCaptureOverlay(
                     onDismiss: _dismissCapture,
                     onSubmitting: _onCaptureSubmitting,
+                    onMediaPickerActiveChanged: _setMediaPickerActive,
                   ),
               ],
             );
@@ -643,6 +790,192 @@ class _FlowMuteButton extends StatelessWidget {
             muted ? Icons.volume_off_rounded : Icons.graphic_eq_rounded,
             size: 24,
             color: AppColors.textMuted.withValues(alpha: 0.82),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FocusReport {
+  const _FocusReport({
+    required this.startedAt,
+    required this.endedAt,
+    required this.duration,
+    required this.trigger,
+    required this.journalCount,
+    required this.awayCount,
+  });
+
+  final DateTime startedAt;
+  final DateTime endedAt;
+  final Duration duration;
+  final _FocusTrigger trigger;
+  final int journalCount;
+  final int awayCount;
+
+  bool get shouldRecord => duration >= _minimumRecordedFocus;
+  bool get shouldShow => shouldRecord;
+
+  String get durationText {
+    final minutes = duration.inMinutes;
+    if (minutes < 1) return '${duration.inSeconds} 秒';
+    final hours = minutes ~/ 60;
+    final remainMinutes = minutes % 60;
+    if (hours == 0) return '$minutes 分钟';
+    if (remainMinutes == 0) return '$hours 小时';
+    return '$hours 小时 $remainMinutes 分钟';
+  }
+
+  String get journalText {
+    return journalCount == 0 ? '未落心笺' : '留下 $journalCount 枚心笺';
+  }
+
+  String get awayText {
+    return awayCount == 0 ? '未曾离席' : '离席 $awayCount 次';
+  }
+}
+
+class _FocusReportSheet extends StatelessWidget {
+  const _FocusReportSheet({required this.report});
+
+  final _FocusReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: isNightTheme ? 0.08 : 0.42),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: isNightTheme ? 0.2 : 0.08,
+                ),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '本次入静',
+                  style: GoogleFonts.notoSerifSc(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  children: [
+                    _ReportMetric(label: '时长', value: report.durationText),
+                    _ReportMetric(label: '心笺', value: report.journalText),
+                    if (report.awayCount > 0)
+                      _ReportMetric(label: '离席', value: report.awayText),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _reportCopy(report),
+                  style: GoogleFonts.notoSansSc(
+                    fontSize: 13,
+                    height: 1.75,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      '收下',
+                      style: GoogleFonts.notoSansSc(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _reportCopy(_FocusReport report) {
+    if (report.awayCount > 2) {
+      return '今天的风有些杂。流境只替你记下真正留在此处的时间。';
+    }
+    if (report.awayCount > 0) {
+      return '有些事来过，又被你放下了。这里记录的是你真正留在此处的时间。';
+    }
+    if (report.journalCount > 0) {
+      return '这一段静里，你没有急着追赶，只把浮起的念头轻轻安放。';
+    }
+    return '这一段时间没有被催促，也没有被打断。你只是安静地，把自己收回来了一点。';
+  }
+}
+
+class _ReportMetric extends StatelessWidget {
+  const _ReportMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 132,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.background.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.glassBorder.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.notoSansSc(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.notoSansSc(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       ),

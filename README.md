@@ -4,7 +4,7 @@ Flow_er 是一款围绕「专注、心笺、沉淀」构建的 Flutter 应用。
 
 ## 关键功能
 
-- 手机号验证码登录，支持 JWT 会话持久化。
+- 本地优先的心流与心笺体验，登录态接入点已预留。
 - 三击屏幕或扣置手机进入心流状态。
 - 心流中下滑记录心笺，支持快捷想法和展笺两种模式。
 - 心笺本地优先保存，并同步到后端做分类打标。
@@ -55,7 +55,7 @@ lib/
 
 ## 后端接口
 
-当前前端已接入以下接口：
+当前前端已预留或接入以下接口：
 
 - `POST /api/v1/auth/send-code`
 - `POST /api/v1/auth/verify-code`
@@ -109,6 +109,33 @@ flutter test
 flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
+## Android Release 签名
+
+Release keystore 不提交到仓库，当前本机文件位于：
+
+```text
+/Users/stormg/developer/keystore/flow_er_release.jks
+```
+
+签名密码和 Gradle 本地配置文件位于同一目录：
+
+```text
+/Users/stormg/developer/keystore/flow_er_release_signing.txt
+/Users/stormg/developer/keystore/flow_er_key.properties
+```
+
+Android release 构建会优先读取 `flow_er_key.properties`。生成上架包：
+
+```sh
+flutter build appbundle --release
+```
+
+如需 APK：
+
+```sh
+flutter build apk --release
+```
+
 ## 数据同步说明
 
 - 心笺先写入本地 SQLite，再同步到后端。
@@ -119,6 +146,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 
 ## 待完善事项
 
+- 短信验证码登录完整联调。
 - 图片附件上传与远端 URL 同步。
 - 心笺增量同步 `since / last_synced_at`。
 - 时间回溯状态同步到后端。

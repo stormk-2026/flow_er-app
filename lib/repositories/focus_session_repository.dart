@@ -18,8 +18,10 @@ class FocusSessionRepository {
     required DateTime startedAt,
     required DateTime endedAt,
     required String triggerType,
+    int? durationSecondsOverride,
   }) async {
-    final duration = endedAt.difference(startedAt).inSeconds;
+    final duration =
+        durationSecondsOverride ?? endedAt.difference(startedAt).inSeconds;
     final isFailed = duration < FocusConstants.minSuccessSeconds;
 
     final id = await _db

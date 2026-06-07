@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -17,10 +18,12 @@ class ThoughtCaptureOverlay extends ConsumerStatefulWidget {
     super.key,
     required this.onDismiss,
     required this.onSubmitting,
+    this.onMediaPickerActiveChanged,
   });
 
   final VoidCallback onDismiss;
   final ValueChanged<Future<void>> onSubmitting;
+  final ValueChanged<bool>? onMediaPickerActiveChanged;
 
   @override
   ConsumerState<ThoughtCaptureOverlay> createState() =>
@@ -36,6 +39,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   final _imagePaths = <String>[];
   final _picker = ImagePicker();
   bool _submitting = false;
+  int _mediaPickerToken = 0;
 
   late final AnimationController _ctrl;
   late final Animation<Offset> _cardSlide;
@@ -56,6 +60,8 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
 
   @override
   void dispose() {
+    _mediaPickerToken++;
+    widget.onMediaPickerActiveChanged?.call(false);
     _quickController.dispose();
     _titleController.dispose();
     _bodyController.dispose();
@@ -71,18 +77,63 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   Future<void> _pickImages() async {
     final remaining = JournalImageStore.maxImages - _imagePaths.length;
     if (remaining <= 0) return;
-    final singlePick = remaining == 1
-        ? await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85)
-        : null;
-    final picks = remaining == 1
-        ? [?singlePick]
-        : await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final token = ++_mediaPickerToken;
+    widget.onMediaPickerActiveChanged?.call(true);
+    late final List<XFile> picks;
+    try {
+      if (remaining == 1) {
+        final pick = await _picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 85,
+        );
+        picks = [?pick];
+      } else {
+        picks = await _picker.pickMultiImage(
+          imageQuality: 85,
+          limit: remaining,
+        );
+      }
+    } on PlatformException catch (error) {
+      if (mounted) {
+        _showPickerError(error.message ?? '图片选择失败');
+      }
+      picks = const [];
+    } on ArgumentError catch (error) {
+      if (mounted) {
+        _showPickerError(error.message);
+      }
+      picks = const [];
+    } finally {
+      Future<void>.delayed(const Duration(milliseconds: 800), () {
+        if (!mounted || token != _mediaPickerToken) return;
+        widget.onMediaPickerActiveChanged?.call(false);
+      });
+    }
     if (picks.isEmpty || !mounted) return;
     final stored = await JournalImageStore.persistPicks(
       picks.take(remaining).toList(),
     );
     if (!mounted) return;
     setState(() => _imagePaths.addAll(stored));
+  }
+
+  void _showPickerError(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
   }
 
   Future<void> _submit() async {
@@ -354,6 +405,8 @@ class _ImageThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheExtent = (72 * dpr).round();
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -364,6 +417,8 @@ class _ImageThumb extends StatelessWidget {
             width: 72,
             height: 72,
             fit: BoxFit.cover,
+            cacheWidth: cacheExtent,
+            cacheHeight: cacheExtent,
           ),
         ),
         if (onRemove != null)

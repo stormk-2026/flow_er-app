@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -26,6 +27,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   MainTab _current = MainTab.state;
   bool _shellHidden = false;
   bool _didSyncForRestoredSession = false;
+  DateTime? _lastBackPressedAt;
 
   void _setShellHidden(bool hide) {
     if (_shellHidden == hide) return;
@@ -111,102 +113,156 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       }
     });
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                AnimatedOpacity(
-                  opacity: _shellHidden ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 500),
-                  child: IgnorePointer(
-                    ignoring: _shellHidden,
-                    child: FlowAppBar(
-                      key: ValueKey('appbar-$themeKey'),
-                      nickname: session?.nickname,
-                      onIdentityTap: isLoggedIn
-                          ? () => _onIdentityTap(context)
-                          : null,
-                      onSettingsTap: isLoggedIn
-                          ? () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const SettingsPage(),
-                              ),
-                            )
-                          : null,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleSystemBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: _shellHidden ? 0 : null,
+                      child: AnimatedOpacity(
+                        opacity: _shellHidden ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 220),
+                        child: IgnorePointer(
+                          ignoring: _shellHidden,
+                          child: FlowAppBar(
+                            key: ValueKey('appbar-$themeKey'),
+                            nickname: session?.nickname,
+                            onIdentityTap: isLoggedIn
+                                ? () => _onIdentityTap(context)
+                                : null,
+                            onSettingsTap: isLoggedIn
+                                ? () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const SettingsPage(),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      IndexedStack(
-                        index: isLoggedIn
-                            ? _current.index
-                            : MainTab.state.index,
-                        children: [
-                          if (isLoggedIn)
-                            InspirationFlowPage(
-                              key: ValueKey('inspiration-$themeKey'),
-                            )
-                          else
-                            const SizedBox.shrink(),
-                          StatePerceptionPage(
-                            key: ValueKey('state-$themeKey'),
-                            isActive: isLoggedIn && _current == MainTab.state,
-                            featuresEnabled: isLoggedIn,
-                            onShellHide: _setShellHidden,
-                          ),
-                          if (isLoggedIn)
-                            ZenAnalyticsPage(
-                              key: ValueKey('analytics-$themeKey'),
-                            )
-                          else
-                            const SizedBox.shrink(),
-                        ],
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 20,
-                        child: AnimatedOpacity(
-                          opacity: _shellHidden ? 0.0 : 1.0,
-                          duration: const Duration(milliseconds: 500),
-                          child: IgnorePointer(
-                            ignoring: _shellHidden || !isLoggedIn,
-                            child: Center(
-                              child: ZenCapsuleNav(
-                                key: ValueKey('nav-$themeKey'),
-                                current: _current,
-                                onChanged: (tab) {
-                                  setState(() {
-                                    _current = tab;
-                                    if (tab != MainTab.state) {
-                                      _shellHidden = false;
-                                    }
-                                  });
-                                },
+                  Expanded(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        IndexedStack(
+                          index: isLoggedIn
+                              ? _current.index
+                              : MainTab.state.index,
+                          children: [
+                            if (isLoggedIn)
+                              InspirationFlowPage(
+                                key: ValueKey('inspiration-$themeKey'),
+                              )
+                            else
+                              const SizedBox.shrink(),
+                            StatePerceptionPage(
+                              key: ValueKey('state-$themeKey'),
+                              isActive: isLoggedIn && _current == MainTab.state,
+                              featuresEnabled: isLoggedIn,
+                              onShellHide: _setShellHidden,
+                            ),
+                            if (isLoggedIn)
+                              ZenAnalyticsPage(
+                                key: ValueKey('analytics-$themeKey'),
+                              )
+                            else
+                              const SizedBox.shrink(),
+                          ],
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 20,
+                          child: AnimatedOpacity(
+                            opacity: _shellHidden ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 500),
+                            child: IgnorePointer(
+                              ignoring: _shellHidden || !isLoggedIn,
+                              child: Center(
+                                child: ZenCapsuleNav(
+                                  key: ValueKey('nav-$themeKey'),
+                                  current: _current,
+                                  onChanged: (tab) {
+                                    setState(() {
+                                      _current = tab;
+                                      if (tab != MainTab.state) {
+                                        _shellHidden = false;
+                                      }
+                                    });
+                                  },
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      if (!isLoggedIn)
-                        GuestShellBlurOverlay(
-                          onLoginTap: () => _onIdentityTap(context),
-                        ),
-                    ],
+                        if (!isLoggedIn)
+                          GuestShellBlurOverlay(
+                            onLoginTap: () => _onIdentityTap(context),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  void _handleSystemBack() {
+    if (_shellHidden) {
+      _showBackHint('此刻仍在心流中，先三击圆点退出心流。');
+      return;
+    }
+
+    final now = DateTime.now();
+    final shouldExit =
+        _lastBackPressedAt != null &&
+        now.difference(_lastBackPressedAt!) < const Duration(seconds: 2);
+    if (shouldExit) {
+      SystemNavigator.pop();
+      return;
+    }
+
+    _lastBackPressedAt = now;
+    _showBackHint('再按一次退出应用');
+  }
+
+  void _showBackHint(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
   }
 
   Future<void> _syncOnLogin() async {

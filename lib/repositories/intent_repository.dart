@@ -110,6 +110,7 @@ class IntentRepository {
     final updatedAt = item['updated_at'] != null
         ? DateTime.tryParse(item['updated_at'] as String) ?? DateTime.now()
         : DateTime.now();
+    final aiComment = _stringField(item, const ['ai_comment', 'aiComment']);
 
     final companion = FlowIntentsCompanion(
       serverId: Value(serverId),
@@ -124,6 +125,9 @@ class IntentRepository {
       priority: Value((item['priority'] as String?) ?? 'medium'),
       tags: Value(jsonEncode(item['tags'] ?? [])),
       attachments: Value(jsonEncode(item['attachments'] ?? [])),
+      aiComment: item.containsKey('ai_comment') || item.containsKey('aiComment')
+          ? Value(aiComment)
+          : const Value.absent(),
       status: Value((item['status'] as String?) ?? 'open'),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -133,7 +137,11 @@ class IntentRepository {
       await _db.into(_db.flowIntents).insert(companion);
     } else {
       // 以 updated_at 较新的为准
-      if (updatedAt.isAfter(existing.updatedAt)) {
+      final hasNewAiComment =
+          aiComment != null &&
+          aiComment.trim().isNotEmpty &&
+          aiComment != existing.aiComment;
+      if (updatedAt.isAfter(existing.updatedAt) || hasNewAiComment) {
         await (_db.update(
           _db.flowIntents,
         )..where((t) => t.serverId.equals(serverId))).write(companion);
@@ -160,5 +168,13 @@ class IntentRepository {
     return (_db.delete(
       _db.flowIntents,
     )..where((t) => t.serverId.equals(serverId))).go();
+  }
+
+  String? _stringField(Map<String, dynamic> item, List<String> keys) {
+    for (final key in keys) {
+      final value = item[key];
+      if (value is String) return value;
+    }
+    return null;
   }
 }

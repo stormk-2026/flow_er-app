@@ -72,8 +72,9 @@ class _ZenCapsuleNavState extends State<ZenCapsuleNav>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: AppColors.navCapsule,
             borderRadius: BorderRadius.circular(40),
+            border: Border.all(color: AppColors.glassBorder),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.07),
