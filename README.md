@@ -114,17 +114,16 @@ flutter pub run build_runner build --delete-conflicting-outputs
 Release keystore 不提交到仓库，当前本机文件位于：
 
 ```text
-/Users/stormg/developer/keystore/flow_er_release.jks
+/Users/stormg/developer/keystore/flow_er_app.jks
 ```
 
-签名密码和 Gradle 本地配置文件位于同一目录：
+签名密码统一记录在 keystore 总表中：
 
 ```text
-/Users/stormg/developer/keystore/flow_er_release_signing.txt
-/Users/stormg/developer/keystore/flow_er_key.properties
+/Users/stormg/developer/keystore/KEYSTORE_CREDENTIALS.md
 ```
 
-Android release 构建会优先读取 `flow_er_key.properties`。生成上架包：
+Android release 构建会优先读取本地 `android/key.properties`，该文件已被 `.gitignore` 忽略。生成上架包：
 
 ```sh
 flutter build appbundle --release

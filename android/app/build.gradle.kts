@@ -8,7 +8,7 @@ plugins {
 }
 
 val releaseKeystorePropertiesFile =
-    file("/Users/stormg/developer/keystore/flow_er_key.properties")
+    rootProject.file("key.properties")
 val releaseKeystoreProperties = Properties().apply {
     if (releaseKeystorePropertiesFile.exists()) {
         releaseKeystorePropertiesFile.inputStream().use { load(it) }
