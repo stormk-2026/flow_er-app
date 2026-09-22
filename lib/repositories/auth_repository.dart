@@ -7,27 +7,24 @@ class AuthRepository {
 
   Dio get _dio => ApiClient.instance.dio;
 
-  /// 发送短信验证码。返回错误信息，null 表示成功。
-  Future<String?> sendCode(String phone) async {
+  /// 发送邮箱验证码。返回错误信息，null 表示成功。
+  Future<String?> sendCode(String email) async {
     try {
-      await _dio.post<void>(
-        '/api/v1/auth/send-code',
-        data: {'phone': phone},
-      );
+      await _dio.post<void>('/api/v1/auth/send-code', data: {'email': email});
       return null;
     } on DioException catch (e) {
-      return _extractError(e) ?? '发送失败，请稍后重试';
+      return authErrorMessage(e);
     }
   }
 
-  /// 验证短信验证码。成功返回 [VerifyResult]，失败抛出错误信息。
+  /// 验证邮箱验证码。成功返回 [VerifyResult]，失败抛出错误信息。
   Future<VerifyResult> verifyCode({
-    required String phone,
-    required String smsCode,
+    required String email,
+    required String code,
   }) async {
     final resp = await _dio.post<Map<String, dynamic>>(
       '/api/v1/auth/verify-code',
-      data: {'phone': phone, 'sms_code': smsCode},
+      data: {'email': email, 'code': code},
     );
     final data = resp.data!;
     final token = data['token'] as String;
@@ -36,6 +33,7 @@ class AuthRepository {
       token: token,
       isNewUser: data['is_new_user'] as bool? ?? false,
       nickname: data['user']?['nickname'] as String? ?? '',
+      email: data['user']['email'] as String,
     );
   }
 
@@ -48,7 +46,7 @@ class AuthRepository {
       );
       return null;
     } on DioException catch (e) {
-      return _extractError(e) ?? '设置失败，请稍后重试';
+      return authErrorMessage(e);
     }
   }
 
@@ -59,11 +57,14 @@ class AuthRepository {
       final data = resp.data!;
       return UserProfile(
         id: data['id'] as String,
-        phone: data['phone'] as String,
+        email: data['email'] as String,
         nickname: data['nickname'] as String? ?? '',
       );
-    } on DioException {
-      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        return null;
+      }
+      rethrow;
     }
   }
 
@@ -76,36 +77,44 @@ class AuthRepository {
     }
     await ApiClient.instance.clearToken();
   }
-
-  String? _extractError(DioException e) {
-    final data = e.response?.data;
-    if (data is Map) {
-      return data['detail']?.toString();
-    }
-    return null;
-  }
 }
 
 class VerifyResult {
   const VerifyResult({
     required this.token,
     required this.isNewUser,
+    required this.email,
     required this.nickname,
   });
 
   final String token;
   final bool isNewUser;
+  final String email;
   final String nickname;
 }
 
 class UserProfile {
   const UserProfile({
     required this.id,
-    required this.phone,
+    required this.email,
     required this.nickname,
   });
 
   final String id;
-  final String phone;
+  final String email;
   final String nickname;
+}
+
+String authErrorMessage(Object error) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    final detail = data is Map ? data['detail'] : null;
+    if (detail is Map && detail['message'] is String) {
+      return detail['message'] as String;
+    }
+    if (error.response?.statusCode == 422) return '请检查邮箱和验证码格式';
+    if (error.response?.statusCode == 429) return '请求过于频繁，请稍后再试';
+    if (error.response == null) return '网络连接失败，请检查网络后重试';
+  }
+  return '操作暂未完成，请稍后重试';
 }

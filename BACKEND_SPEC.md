@@ -25,7 +25,7 @@
 4. 退出专注 → 本地记录一条 FocusSession（时长、是否成功）
 5. 自然语言输入 → Kimi AI 解析成结构化意图（已接入，**前端直连 Kimi，后端无需转发**）
 
-**登录设计极简**：手机号 + 密码 + 短信验证码注册，无头像，昵称 ≤6 字。注册前先过图形验证码防刷。
+**登录设计极简**：邮箱验证码注册/登录，无密码，无头像，昵称 ≤6 字。后端按邮箱、IP 和全站预算限流。
 
 ---
 
@@ -35,7 +35,7 @@
 |------|------|
 | Kimi AI 解析 | ✅ 已接入，前端直连 `api.moonshot.cn`，后端**无需处理** |
 | 本地数据库 | ✅ Drift (SQLite)，`FlowIntent` + `FocusSession` 两张表 |
-| 认证 | ❌ Mock 实现，需替换为真实后端 |
+| 认证 | 邮箱验证码，已接入阿里云 DirectMail；需配置服务端发信凭证 |
 | 数据同步 | ❌ 纯本地，需后端支持云端备份/多端同步 |
 | 推送通知 | ❌ 未实现，`dueAt` 字段已存但还没触发 |
 
@@ -54,141 +54,57 @@ Content-Type: application/json
 
 ---
 
-### 3.1 认证模块 `/auth`
+### 3.1 认证模块 `/auth`（邮箱验证码，2026-09）
 
-#### GET `/auth/captcha`
-获取图形验证码（获取短信验证码前必须先过这一关）
-
-后端生成 4 位随机字母数字，带噪点/扭曲，以 Base64 PNG 返回。同时用 Redis 存 `captcha:{id} → code`，TTL 5 分钟。
-
-**Response**
-```json
-{
-  "captcha_id": "uuid",
-  "image": "data:image/png;base64,iVBORw..."
-}
-```
-
----
+- 无密码。验证邮箱即注册或登录；新用户或尚未设置昵称的用户进入昵称步骤。
+- 不再接受 phone、sms_code、device_id 等旧参数，旧版 token 不再有效。
+- 邮箱统一校验并转为小写。历史手机号用户和业务记录保留，不自动合并到新邮箱账号。
 
 #### POST `/auth/send-code`
-发送短信验证码（云片通道）
 
-**前置条件**：必须携带有效的图形验证码，后端验证通过后才调云片，验证后立即删除该 `captcha_id`（一次性）。
+请求：`{"email":"name@qq.com"}`
 
-**限流（后端强制执行）**：
-- 同一手机号：60s 内只能发 1 次，10 分钟内最多 3 次
-- 同一 IP：1 小时内最多 10 次
+成功：`{"expires_in":300,"retry_after":60}`
 
-**Request**
-```json
-{
-  "phone": "13800138000",
-  "captcha_id": "uuid",
-  "captcha_code": "A3k9"
-}
-```
+阿里云 DirectMail SingleSendMail 触发邮件；服务端生成随机 6 位数字，Redis 仅存 HMAC 摘要，300 秒过期，不向接口响应或日志输出验证码。
 
-**Response**
-```json
-{ "expires_in": 300 }
-```
+限流为 Redis 原子计数（从首次请求起计算窗口）：
 
-**错误码**
-- `CAPTCHA_WRONG` — 图形验证码错误
-- `CAPTCHA_EXPIRED` — 图形验证码已过期（重新获取）
-- `PHONE_RATE_LIMITED` — 该手机号发送过于频繁
-- `IP_RATE_LIMITED` — 该 IP 请求过于频繁
-- `PHONE_INVALID` — 手机号格式不合法
-
----
+- 同邮箱：1 次/60 秒、5 次/小时、10 次/24 小时。
+- 同 IP：5 次/分钟、30 次/小时。
+- 全站：20 次/分钟、默认 500 次/24 小时（EMAIL_DAILY_LIMIT）。
+- 失败发送仍消耗配额；重发替换旧码，发送失败撤销该码。
+- 429 返回 Retry-After；权限、配置、Redis 或发信异常返回 503，绝不使用固定验证码降级。
 
 #### POST `/auth/verify-code`
-验证短信验证码，自动判断登录或注册
 
-这是核心接口。后端收到验证码后：
-- 该手机号**已注册** → 验证通过直接返回 token，`is_new_user: false`
-- 该手机号**未注册** → 创建账号（昵称暂为空），返回 token，`is_new_user: true`
+请求：`{"email":"name@qq.com","code":"邮件中的六位数字"}`
 
-前端收到 `is_new_user: true` 后展示昵称填写步骤，填完后调 `/auth/set-nickname`。
+成功示例：
 
-**Request**
 ```json
-{
-  "phone": "13800138000",
-  "sms_code": "123456"
-}
+{"token":"jwt","is_new_user":true,"user":{"id":"uuid","email":"name@qq.com","nickname":""}}
 ```
 
-**Response**
-```json
-{
-  "token": "jwt_token",
-  "is_new_user": true,
-  "user": {
-    "id": "uuid",
-    "phone": "138****8000",
-    "nickname": ""
-  }
-}
-```
+验证码只能消费一次，最多输错 5 次即作废；校验接口限每 IP 30 次/分钟、全站 300 次/分钟。账号通过唯一邮箱定位，昵称为空时 is_new_user 为 true。
 
-**错误码**
-- `SMS_CODE_EXPIRED` — 验证码已过期
-- `SMS_CODE_WRONG` — 验证码错误
-
----
+错误：400 EMAIL_CODE_INVALID；429 VERIFY_RATE_LIMITED；503 EMAIL_UNAVAILABLE；请求格式错误为 422。
 
 #### POST `/auth/set-nickname`
-新用户完成注册后设置昵称（需携带 token）
 
-**Headers**: `Authorization: Bearer <token>`
+需 Bearer token。请求 `{"nickname":"晴山"}`，去除首尾空白、1–6 字，不要求全站唯一。
 
-**Request**
-```json
-{ "nickname": "昵称（≤6字）" }
-```
-
-**Response**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "phone": "138****8000",
-    "nickname": "晴山"
-  }
-}
-```
-
-**错误码**
-- `NICKNAME_TOO_LONG` — 昵称超过6字
-- `NICKNAME_TAKEN` — 昵称已被使用（如需唯一性约束）
-
----
+响应 `{"user":{"id":"uuid","email":"name@qq.com","nickname":"晴山"}}`。
 
 #### POST `/auth/logout`
-登出（使 token 失效，如用 Redis 维护黑名单）
 
-**Headers**: `Authorization: Bearer <token>`
-
-**Response**: `204 No Content`
-
----
+需 Bearer token。当前 token 加入 Redis 黑名单，返回 204。
 
 #### GET `/auth/me`
-获取当前登录用户信息
 
-**Headers**: `Authorization: Bearer <token>`
+需 Bearer token。返回 id、email、nickname、created_at。
 
-**Response**
-```json
-{
-  "id": "uuid",
-  "phone": "138****8000",
-  "nickname": "...",
-  "created_at": "ISO-8601"
-}
-```
+错误统一为 `{"detail":{"code":"...","message":"..."}}`，422 为 FastAPI 字段校验格式。
 
 ---
 
@@ -417,10 +333,10 @@ P2（后续迭代）:
 
 ## 六、其他注意事项
 
-1. **无密码设计** — 纯手机号 + 短信验证码，无需存储密码。
+1. **无密码设计** — 邮箱验证码，凭证和验证码摘要仅在后端。
 2. **时间** — 所有时间字段用 ISO-8601 + 时区（`+08:00`），前端在中国大陆。
 3. **Kimi AI** — 前端已直连 `api.moonshot.cn`，后端**完全不需要**代理或转发 AI 请求。
 4. **附件图片** — 当前存本地路径，云端同步先忽略，后续单独设计 OSS 方案。
-5. **短信通道** — 使用云片（yunpian.com），API Key 只存后端环境变量，绝不下发给前端。
-6. **防刷** — 同一手机号 60s 内只能发 1 次验证码，同一 IP 1 小时内最多 10 次，后端 Redis 实现。
-7. **手机号脱敏** — 所有接口返回的 `phone` 字段格式为 `138****8000`，原始手机号只存数据库。
+5. **邮件通道** — 阿里云 DirectMail SingleSendMail，RAM 仅授予 dm:SingleSendMail；AccessKey 只存服务器。
+6. **防刷** — 详见认证模块的原子限流和错误次数限制。当前不包含人机验证码/WAF，分布式攻击可能耗尽预算，需要结合云端监控和后续风控。
+7. **传输安全** — 正式上线前将 API 切为 HTTPS，当前 IP HTTP 地址仅供受控联调。

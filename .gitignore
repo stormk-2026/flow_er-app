@@ -1,4 +1,9 @@
 # Miscellaneous
+/backend/
+# Backend source is maintained in a separate private repository.
+.env
+.env.*
+!.env.example
 *.class
 *.log
 *.pyc

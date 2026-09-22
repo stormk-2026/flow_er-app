@@ -18,6 +18,8 @@ Flow_er 是一款围绕「专注、心笺、沉淀」构建的 Flutter 应用。
 
 ## 技术栈
 
+本仓库仅维护 Flutter 客户端与接口约定。后端源码独立维护，不包含在此仓库中；服务端凭证与签名文件不得提交。
+
 - Flutter
 - Riverpod
 - Drift / SQLite
@@ -111,17 +113,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 
 ## Android Release 签名
 
-Release keystore 不提交到仓库，当前本机文件位于：
-
-```text
-/Users/stormg/developer/keystore/flow_er_app.jks
-```
-
-签名密码统一记录在 keystore 总表中：
-
-```text
-/Users/stormg/developer/keystore/KEYSTORE_CREDENTIALS.md
-```
+Release keystore 与签名密码由维护者在仓库外安全保存，不提交到仓库。自行构建时请使用自己的签名配置。
 
 Android release 构建会优先读取本地 `android/key.properties`，该文件已被 `.gitignore` 忽略。生成上架包：
 
@@ -145,7 +137,7 @@ flutter build apk --release
 
 ## 待完善事项
 
-- 短信验证码登录完整联调。
+- 邮箱验证码登录已接入，真实发信与收信已验证；App 完整登录流程待真机验收，正式上线前切换 HTTPS。后端源码独立闭源维护。
 - 图片附件上传与远端 URL 同步。
 - 心笺增量同步 `since / last_synced_at`。
 - 时间回溯状态同步到后端。

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,9 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../repositories/auth_repository.dart';
 
-// 三阶段：填手机号 → 填验证码 → 新用户留昵称
-enum _AuthStep { phone, code, nickname }
+// 三阶段：填邮箱 → 填验证码 → 新用户留昵称
+enum _AuthStep { email, code, nickname }
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -18,14 +21,16 @@ class AuthPage extends ConsumerStatefulWidget {
 
 class _AuthPageState extends ConsumerState<AuthPage>
     with SingleTickerProviderStateMixin {
-  _AuthStep _step = _AuthStep.phone;
+  _AuthStep _step = _AuthStep.email;
 
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _codeController = TextEditingController();
   final _nicknameController = TextEditingController();
 
   bool _loading = false;
   int _countdown = 0;
+  Timer? _resendTimer;
+  String? _sentEmail;
 
   // 淡入动画
   late final AnimationController _fadeCtrl;
@@ -43,7 +48,8 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _resendTimer?.cancel();
+    _emailController.dispose();
     _codeController.dispose();
     _nicknameController.dispose();
     _fadeCtrl.dispose();
@@ -56,20 +62,24 @@ class _AuthPageState extends ConsumerState<AuthPage>
   }
 
   // 第一步：发送验证码
-  Future<void> _submitPhone() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length != 11) {
-      _showSnack('请输入正确的手机号');
+  Future<void> _submitEmail() async {
+    if (_loading) return;
+    final email = _emailController.text.trim().toLowerCase();
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email) ||
+        email.length > 254) {
+      _showSnack('请输入正确的邮箱');
       return;
     }
     setState(() => _loading = true);
-    final error = await ref.read(authProvider.notifier).sendCode(phone);
+    final error = await ref.read(authProvider.notifier).sendCode(email);
     if (!mounted) return;
     setState(() => _loading = false);
     if (error != null) {
       _showSnack(error);
       return;
     }
+    _sentEmail = email;
+    _codeController.clear();
     setState(() => _countdown = 60);
     _tickCountdown();
     _goStep(_AuthStep.code);
@@ -77,17 +87,17 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
   // 第二步：验证码确认
   Future<void> _submitCode() async {
+    if (_loading) return;
     final code = _codeController.text.trim();
-    if (code.length < 4) {
-      _showSnack('请输入验证码');
+    if (!RegExp(r'^[0-9]{6}$').hasMatch(code)) {
+      _showSnack('请输入 6 位邮箱验证码');
       return;
     }
     setState(() => _loading = true);
     try {
-      final result = await ref.read(authProvider.notifier).verifyCode(
-            phone: _phoneController.text.trim(),
-            smsCode: code,
-          );
+      final result = await ref
+          .read(authProvider.notifier)
+          .verifyCode(email: _sentEmail!, code: code);
       if (!mounted) return;
       setState(() => _loading = false);
       if (result.isNewUser) {
@@ -98,22 +108,22 @@ class _AuthPageState extends ConsumerState<AuthPage>
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _showSnack('验证码错误，请重试');
+      _showSnack(authErrorMessage(e));
     }
   }
 
   // 第三步：设置昵称
   Future<void> _submitNickname() async {
+    if (_loading) return;
     final nickname = _nicknameController.text.trim();
     if (nickname.isEmpty) {
       _showSnack('请留下一个称呼');
       return;
     }
     setState(() => _loading = true);
-    final error = await ref.read(authProvider.notifier).setNickname(
-          phone: _phoneController.text.trim(),
-          nickname: nickname,
-        );
+    final error = await ref
+        .read(authProvider.notifier)
+        .setNickname(email: _sentEmail!, nickname: nickname);
     if (!mounted) return;
     setState(() => _loading = false);
     if (error != null) {
@@ -124,31 +134,35 @@ class _AuthPageState extends ConsumerState<AuthPage>
   }
 
   void _tickCountdown() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted || _countdown <= 0) return;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _countdown <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _countdown = 0);
+        return;
+      }
       setState(() => _countdown--);
-      if (_countdown > 0) _tickCountdown();
     });
   }
 
   Future<void> _resendCode() async {
-    if (_countdown > 0) return;
-    final error = await ref
-        .read(authProvider.notifier)
-        .sendCode(_phoneController.text.trim());
+    if (_countdown > 0 || _loading || _sentEmail == null) return;
+    setState(() => _loading = true);
+    final error = await ref.read(authProvider.notifier).sendCode(_sentEmail!);
     if (!mounted) return;
+    setState(() => _loading = false);
     if (error != null) {
       _showSnack(error);
       return;
     }
+    _codeController.clear();
     setState(() => _countdown = 60);
     _tickCountdown();
-    _showSnack('验证码已重新发送');
+    _showSnack('验证码已重新发送，请查看邮箱');
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -161,15 +175,17 @@ class _AuthPageState extends ConsumerState<AuthPage>
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           color: AppColors.navIcon,
-          onPressed: () {
-            if (_step == _AuthStep.code) {
-              _goStep(_AuthStep.phone);
-            } else if (_step == _AuthStep.nickname) {
-              _goStep(_AuthStep.code);
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
+          onPressed: _loading
+              ? null
+              : () {
+                  if (_step == _AuthStep.code) {
+                    _goStep(_AuthStep.email);
+                  } else if (_step == _AuthStep.nickname) {
+                    _goStep(_AuthStep.code);
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
         ),
       ),
       body: SafeArea(
@@ -178,24 +194,24 @@ class _AuthPageState extends ConsumerState<AuthPage>
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(28, 0, 28, 32),
             child: switch (_step) {
-              _AuthStep.phone => _PhoneStep(
-                  controller: _phoneController,
-                  loading: _loading,
-                  onSubmit: _submitPhone,
-                ),
+              _AuthStep.email => _EmailStep(
+                controller: _emailController,
+                loading: _loading,
+                onSubmit: _submitEmail,
+              ),
               _AuthStep.code => _CodeStep(
-                  phone: _phoneController.text.trim(),
-                  controller: _codeController,
-                  countdown: _countdown,
-                  loading: _loading,
-                  onSubmit: _submitCode,
-                  onResend: _resendCode,
-                ),
+                email: _sentEmail!,
+                controller: _codeController,
+                countdown: _countdown,
+                loading: _loading,
+                onSubmit: _submitCode,
+                onResend: _resendCode,
+              ),
               _AuthStep.nickname => _NicknameStep(
-                  controller: _nicknameController,
-                  loading: _loading,
-                  onSubmit: _submitNickname,
-                ),
+                controller: _nicknameController,
+                loading: _loading,
+                onSubmit: _submitNickname,
+              ),
             },
           ),
         ),
@@ -204,10 +220,10 @@ class _AuthPageState extends ConsumerState<AuthPage>
   }
 }
 
-// ─── 第一步：手机号 ────────────────────────────────────────────────────────────
+// ─── 第一步：邮箱 ────────────────────────────────────────────────────────────
 
-class _PhoneStep extends StatelessWidget {
-  const _PhoneStep({
+class _EmailStep extends StatelessWidget {
+  const _EmailStep({
     required this.controller,
     required this.loading,
     required this.onSubmit,
@@ -223,32 +239,26 @@ class _PhoneStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(
-          title: '入静',
-          subtitle: '以号码为门，\n无需记忆，无需繁礼。',
-        ),
+        _Header(title: '入静', subtitle: '以邮箱为门，\n无需记忆，无需繁礼。'),
         const SizedBox(height: 40),
         TextField(
           controller: controller,
           autofocus: true,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(11),
-          ],
-          style: GoogleFonts.notoSansSc(fontSize: 16, letterSpacing: 2),
-          decoration: _inputDecoration('手机号'),
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          enableSuggestions: false,
+          autofillHints: const [AutofillHints.email],
+          enabled: !loading,
+          inputFormatters: [LengthLimitingTextInputFormatter(254)],
+          style: GoogleFonts.notoSansSc(fontSize: 16),
+          decoration: _inputDecoration('邮箱地址，例如 name@qq.com'),
           onSubmitted: (_) => onSubmit(),
         ),
         const SizedBox(height: 32),
-        _PrimaryButton(
-          label: '获取验证码',
-          loading: loading,
-          onPressed: onSubmit,
-        ),
+        _PrimaryButton(label: '获取验证码', loading: loading, onPressed: onSubmit),
         const SizedBox(height: 20),
         Text(
-          '未注册的号码将自动创建账号',
+          '验证邮箱后自动注册或登录，无需设置密码',
           textAlign: TextAlign.center,
           style: GoogleFonts.notoSansSc(
             fontSize: 12,
@@ -264,7 +274,7 @@ class _PhoneStep extends StatelessWidget {
 
 class _CodeStep extends StatelessWidget {
   const _CodeStep({
-    required this.phone,
+    required this.email,
     required this.controller,
     required this.countdown,
     required this.loading,
@@ -272,49 +282,39 @@ class _CodeStep extends StatelessWidget {
     required this.onResend,
   });
 
-  final String phone;
+  final String email;
   final TextEditingController controller;
   final int countdown;
   final bool loading;
   final VoidCallback onSubmit;
   final VoidCallback onResend;
 
-  String get _maskedPhone {
-    if (phone.length != 11) return phone;
-    return '${phone.substring(0, 3)}****${phone.substring(7)}';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final canResend = countdown == 0;
+    final canResend = countdown == 0 && !loading;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(
-          title: '验证',
-          subtitle: '验证码已发送至\n$_maskedPhone',
-        ),
+        _Header(title: '验证', subtitle: '验证码已发送至\n$email\n5 分钟内有效，未收到请检查垃圾邮件'),
         const SizedBox(height: 40),
         TextField(
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
+          enabled: !loading,
+          autofillHints: const [AutofillHints.oneTimeCode],
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(6),
           ],
           style: GoogleFonts.notoSansSc(fontSize: 24, letterSpacing: 8),
           textAlign: TextAlign.center,
-          decoration: _inputDecoration('——  ——  ——  ——'),
+          decoration: _inputDecoration('6 位验证码'),
           onSubmitted: (_) => onSubmit(),
         ),
         const SizedBox(height: 32),
-        _PrimaryButton(
-          label: '确认',
-          loading: loading,
-          onPressed: onSubmit,
-        ),
+        _PrimaryButton(label: '确认', loading: loading, onPressed: onSubmit),
         const SizedBox(height: 20),
         Center(
           child: GestureDetector(
@@ -354,27 +354,19 @@ class _NicknameStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(
-          title: '相逢',
-          subtitle: '如何称呼你？\n一两个字即可，无需多言。',
-        ),
+        _Header(title: '相逢', subtitle: '如何称呼你？\n一两个字即可，无需多言。'),
         const SizedBox(height: 40),
         TextField(
           controller: controller,
           autofocus: true,
           maxLength: 6,
+          enabled: !loading,
           style: GoogleFonts.notoSansSc(fontSize: 16),
-          decoration: _inputDecoration('一个你喜欢的称呼').copyWith(
-            counterText: '',
-          ),
+          decoration: _inputDecoration('一个你喜欢的称呼').copyWith(counterText: ''),
           onSubmitted: (_) => onSubmit(),
         ),
         const SizedBox(height: 32),
-        _PrimaryButton(
-          label: '进入流境',
-          loading: loading,
-          onPressed: onSubmit,
-        ),
+        _PrimaryButton(label: '进入流境', loading: loading, onPressed: onSubmit),
       ],
     );
   }
@@ -436,9 +428,7 @@ class _PrimaryButton extends StatelessWidget {
         backgroundColor: const Color(0xFF516356),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
       child: loading
           ? const SizedBox(
@@ -457,10 +447,7 @@ class _PrimaryButton extends StatelessWidget {
 InputDecoration _inputDecoration(String hint) {
   return InputDecoration(
     hintText: hint,
-    hintStyle: GoogleFonts.notoSansSc(
-      fontSize: 14,
-      color: AppColors.textMuted,
-    ),
+    hintStyle: GoogleFonts.notoSansSc(fontSize: 14, color: AppColors.textMuted),
     filled: true,
     fillColor: AppColors.surface,
     counterText: '',

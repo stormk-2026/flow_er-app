@@ -11,7 +11,7 @@ import 'package:flow_er/services/analytics/analytics_service.dart';
 
 void main() {
   testWidgets('流境 splash navigates to main', (WidgetTester tester) async {
-    await tester.pumpWidget(const FlowJingApp());
+    await tester.pumpWidget(const ProviderScope(child: FlowJingApp()));
 
     expect(find.text('流  境'), findsOneWidget);
     await tester.pump(const Duration(seconds: 3));
@@ -131,5 +131,5 @@ class _FakeAnalyticsService extends AnalyticsService {
 class _LoggedInAuth extends AuthController {
   @override
   Future<AuthSession?> build() async =>
-      const AuthSession(phone: 'zen', nickname: '测试');
+      const AuthSession(email: 'zen@example.com', nickname: '测试');
 }

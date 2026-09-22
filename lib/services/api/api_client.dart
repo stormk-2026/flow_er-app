@@ -1,7 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _baseUrl = 'http://47.114.112.184:8000';
+const _baseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://47.114.112.184:8000',
+);
 const _tokenKey = 'auth_token';
 
 /// 全局单例 API 客户端，统一处理 base URL、Bearer token、错误格式。
