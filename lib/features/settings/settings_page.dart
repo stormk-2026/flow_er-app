@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,7 +27,7 @@ class SettingsPage extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          '设置',
+          '设置'.tr,
           style: GoogleFonts.notoSansSc(
             fontSize: 16,
             color: AppColors.textPrimary,
@@ -38,73 +39,165 @@ class SettingsPage extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          Text(
-            '外观',
-            style: GoogleFonts.notoSansSc(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: AppColors.textMuted,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: [
+                  Text(
+                    '外观'.tr,
+                    style: GoogleFonts.notoSansSc(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _ThemeModeTile(
+                    value: settings.themeMode,
+                    onChanged: (mode) =>
+                        ref.read(settingsProvider.notifier).setThemeMode(mode),
+                  ),
+                  const SizedBox(height: 12),
+                  _LanguageTile(
+                    value: settings.language,
+                    onChanged: (language) => ref
+                        .read(settingsProvider.notifier)
+                        .setLanguage(language),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    '专注'.tr,
+                    style: GoogleFonts.notoSansSc(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsSwitchTile(
+                    title: '扣置手机进入专注'.tr,
+                    subtitle: '开启后，手机静置于桌面也可进入心流；默认仅轻击三下'.tr,
+                    value: settings.sensorFocusEnabled,
+                    onChanged: (v) => ref
+                        .read(settingsProvider.notifier)
+                        .setSensorFocusEnabled(v),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsSwitchTile(
+                    title: '声音'.tr,
+                    subtitle: '开启后播放点击、心笺与心流白噪音'.tr,
+                    value: settings.soundEnabled,
+                    onChanged: (v) async {
+                      await ref
+                          .read(settingsProvider.notifier)
+                          .setSoundEnabled(v);
+                      await ref.read(appAudioServiceProvider).setEnabled(v);
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    '沉淀'.tr,
+                    style: GoogleFonts.notoSansSc(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: _settingsCardDecoration,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const PrivacyPage(),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 18,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '隐私与数据'.tr,
+                                  style: GoogleFonts.notoSansSc(
+                                    fontSize: 15,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                color: AppColors.textMuted,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _ThemeModeTile(
-            value: settings.themeMode,
-            onChanged: (mode) =>
-                ref.read(settingsProvider.notifier).setThemeMode(mode),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            '专注',
-            style: GoogleFonts.notoSansSc(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: AppColors.textMuted,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'v1.0.0',
+                  style: GoogleFonts.notoSansSc(
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                    color: AppColors.textMuted.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _SettingsSwitchTile(
-            title: '扣置手机进入专注',
-            subtitle: '开启后，手机静置于桌面也可进入心流；默认仅轻击三下',
-            value: settings.sensorFocusEnabled,
-            onChanged: (v) =>
-                ref.read(settingsProvider.notifier).setSensorFocusEnabled(v),
-          ),
-          const SizedBox(height: 12),
-          _SettingsSwitchTile(
-            title: '声音',
-            subtitle: '开启后播放点击、心笺与心流白噪音',
-            value: settings.soundEnabled,
-            onChanged: (v) async {
-              await ref.read(settingsProvider.notifier).setSoundEnabled(v);
-              await ref.read(appAudioServiceProvider).setEnabled(v);
-            },
-          ),
-          const SizedBox(height: 28),
-          Text(
-            '沉淀',
-            style: GoogleFonts.notoSansSc(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
-          const SizedBox(height: 24),
-          ListTile(
-            title: const Text('隐私与数据'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PrivacyPage()),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+class _LanguageTile extends StatelessWidget {
+  const _LanguageTile({required this.value, required this.onChanged});
+
+  final AppLanguage value;
+  final ValueChanged<AppLanguage> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    decoration: _settingsCardDecoration,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SettingsTextBlock(title: '语言'.tr, subtitle: 'Language / 语言'),
+        const SizedBox(height: 14),
+        SegmentedButton<AppLanguage>(
+          segments: const [
+            ButtonSegment(value: AppLanguage.chinese, label: Text('简体中文')),
+            ButtonSegment(value: AppLanguage.english, label: Text('English')),
+          ],
+          selected: {value},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+          showSelectedIcon: false,
+        ),
+      ],
+    ),
+  );
 }
 
 class _ThemeModeTile extends StatelessWidget {
@@ -121,9 +214,9 @@ class _ThemeModeTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SettingsTextBlock(
-            title: '界面模式',
-            subtitle: '自动会在 06:00 / 18:00 切换，也可以手动指定',
+          _SettingsTextBlock(
+            title: '界面模式'.tr,
+            subtitle: '自动会在 06:00 / 18:00 切换，也可以手动指定'.tr,
           ),
           const SizedBox(height: 14),
           SegmentedButton<AppThemeMode>(
@@ -254,7 +347,7 @@ class _TimeRewindTile extends ConsumerWidget {
                 ),
               ),
               child: Text(
-                '回溯近 30 分钟内的失败专注',
+                '回溯近 30 分钟内的失败专注'.tr,
                 style: GoogleFonts.notoSansSc(fontSize: 13),
               ),
             ),
@@ -273,7 +366,7 @@ class _TimeRewindTile extends ConsumerWidget {
     if (count == 0) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('近 30 分钟内没有可回溯的失败专注')));
+      ).showSnackBar(SnackBar(content: Text('近 30 分钟内没有可回溯的失败专注'.tr)));
       return;
     }
 
@@ -281,7 +374,7 @@ class _TimeRewindTile extends ConsumerWidget {
       context: context,
       title: TimeRewindCopy.title,
       message: TimeRewindCopy.confirmMessage(count),
-      confirmLabel: '回溯',
+      confirmLabel: '回溯'.tr,
       icon: Icons.history_rounded,
     );
 
@@ -292,9 +385,16 @@ class _TimeRewindTile extends ConsumerWidget {
         .rewindRecentFailures();
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(error ?? '已回溯 $count 次失败专注，不计入统计')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ??
+              (UiText.english
+                  ? 'Rewound $count failed sessions; they no longer count toward statistics.'
+                  : '已回溯 $count 次失败专注，不计入统计'),
+        ),
+      ),
+    );
   }
 }
 
@@ -304,7 +404,7 @@ void _showTimeRewindHelp(BuildContext context) {
     title: TimeRewindCopy.title,
     message: TimeRewindCopy.intro,
     icon: Icons.history_rounded,
-    confirmLabel: '知道了',
+    confirmLabel: '知道了'.tr,
     cancelLabel: null,
     content: Padding(
       padding: const EdgeInsets.only(top: 18),

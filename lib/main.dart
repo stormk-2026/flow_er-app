@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme/app_colors.dart';
 import 'core/theme/day_night_theme.dart';
+import 'core/i18n/ui_text.dart';
 import 'features/splash/splash_page.dart';
 import 'providers/settings_provider.dart';
 
@@ -48,7 +50,9 @@ class _FlowJingAppState extends ConsumerState<FlowJingApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(settingsProvider).themeMode;
+    final settings = ref.watch(settingsProvider);
+    UiText.english = settings.language == AppLanguage.english;
+    final themeMode = settings.themeMode;
     appThemeMode = themeMode;
     if (_scheduledThemeMode != themeMode) {
       _scheduleThemeRefresh();
@@ -56,7 +60,16 @@ class _FlowJingAppState extends ConsumerState<FlowJingApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '流境',
+      title: '流境'.tr,
+      locale: settings.language == AppLanguage.english
+          ? const Locale('en')
+          : const Locale('zh', 'CN'),
+      supportedLocales: const [Locale('zh', 'CN'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
         colorScheme: ColorScheme.fromSeed(

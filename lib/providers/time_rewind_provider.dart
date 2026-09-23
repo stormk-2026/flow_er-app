@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,7 +61,7 @@ class TimeRewindController extends Notifier<TimeRewindQuota> {
 
   /// 返回 null 表示成功；否则为错误提示。
   Future<String?> rewindRecentFailures() async {
-    if (_busy) return '回溯处理中，请稍候';
+    if (_busy) return '回溯处理中，请稍候'.tr;
     _busy = true;
     final generation = _generation;
     final account = ref.read(authProvider).valueOrNull?.email ?? 'guest';
@@ -70,16 +71,16 @@ class TimeRewindController extends Notifier<TimeRewindQuota> {
     final sync = ref.read(focusSessionSyncServiceProvider);
     try {
       await _quotaReady;
-      if (generation != _generation) return '账号已切换，请重新操作';
+      if (generation != _generation) return '账号已切换，请重新操作'.tr;
       await _loadQuota(account, generation);
-      if (generation != _generation) return '账号已切换，请重新操作';
+      if (generation != _generation) return '账号已切换，请重新操作'.tr;
       if (state.remainingToday <= 0) {
-        return '今日回溯次数已用尽，明日再试';
+        return '今日回溯次数已用尽，明日再试'.tr;
       }
       final failures = await repo.getRewindableFailures();
-      if (generation != _generation) return '账号已切换，请重新操作';
+      if (generation != _generation) return '账号已切换，请重新操作'.tr;
       if (failures.isEmpty) {
-        return '近 30 分钟内没有可回溯的失败专注';
+        return '近 30 分钟内没有可回溯的失败专注'.tr;
       }
 
       await repo.excludeSessions(failures.map((s) => s.id));
@@ -109,7 +110,7 @@ class TimeRewindController extends Notifier<TimeRewindQuota> {
 
       return null;
     } catch (_) {
-      return '回溯未完成，请重试';
+      return '回溯未完成，请重试'.tr;
     } finally {
       _busy = false;
     }

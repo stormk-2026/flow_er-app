@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -95,7 +96,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
       }
     } on PlatformException catch (error) {
       if (mounted) {
-        _showPickerError(error.message ?? '图片选择失败');
+        _showPickerError(error.message?.tr ?? '图片选择失败'.tr);
       }
       picks = const [];
     } on ArgumentError catch (error) {
@@ -202,7 +203,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
                       Row(
                         children: [
                           Text(
-                            '记下此刻',
+                            '记下此刻'.tr,
                             style: GoogleFonts.notoSansSc(
                               fontSize: 14,
                               color: AppColors.textSecondary,
@@ -245,7 +246,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
                           ),
                         ),
                         child: Text(
-                          _submitting ? '上传中…' : '收入心笺',
+                          _submitting ? '上传中…'.tr : '收入心笺'.tr,
                           style: GoogleFonts.notoSansSc(fontSize: 14),
                         ),
                       ),
@@ -268,7 +269,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
       maxLines: 3,
       minLines: 1,
       onChanged: (_) => setState(() {}),
-      decoration: _fieldDecoration('一句话，记下想法或感受…'),
+      decoration: _fieldDecoration('一句话，记下想法或感受…'.tr),
       style: GoogleFonts.notoSansSc(fontSize: 14),
       onSubmitted: _canSubmit ? (_) => _submit() : null,
     );
@@ -283,7 +284,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
           maxLength: 100,
           autofocus: true,
           onChanged: (_) => setState(() {}),
-          decoration: _fieldDecoration('标题'),
+          decoration: _fieldDecoration('标题'.tr),
           style: GoogleFonts.notoSansSc(
             fontSize: 15,
             fontWeight: FontWeight.w500,
@@ -296,12 +297,14 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
           maxLines: 6,
           minLines: 4,
           onChanged: (_) => setState(() {}),
-          decoration: _fieldDecoration('正文 · 感受 · 日记'),
+          decoration: _fieldDecoration('正文 · 感受 · 日记'.tr),
           style: GoogleFonts.notoSansSc(fontSize: 14, height: 1.6),
         ),
         const SizedBox(height: 12),
         Text(
-          '图片（${_imagePaths.length}/${JournalImageStore.maxImages}）',
+          UiText.english
+              ? 'Images (${_imagePaths.length}/${JournalImageStore.maxImages})'
+              : '图片（${_imagePaths.length}/${JournalImageStore.maxImages}）',
           style: GoogleFonts.notoSansSc(
             fontSize: 11,
             color: AppColors.textMuted,
@@ -382,7 +385,7 @@ class _ModeToggle extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  m.label,
+                  m.label.tr,
                   style: GoogleFonts.notoSansSc(
                     fontSize: 13,
                     color: selected

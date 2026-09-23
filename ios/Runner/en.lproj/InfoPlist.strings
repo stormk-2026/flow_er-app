@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "Flow-er";
+"CFBundleName" = "Flow-er";
+"NSCameraUsageDescription" = "Allow Flow-er to add a photo to your journal entry.";
+"NSPhotoLibraryUsageDescription" = "Allow Flow-er to add photos to your journal entry.";

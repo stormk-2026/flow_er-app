@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:math' as math;
 import 'dart:io';
 import '../../../core/widgets/private_journal_image.dart';
@@ -112,13 +113,13 @@ class _FlipMomentCardState extends State<_FlipMomentCard>
     right: 0,
     child: Semantics(
       label: _ready
-          ? (showingBack ? '翻回心笺正面' : '回响已就绪，点击翻转')
-          : (_waitingTooLong ? '回响尚未就绪，可下拉刷新' : '回响生成中，暂不可翻转'),
+          ? (showingBack ? '翻回心笺正面'.tr : '回响已就绪，点击翻转'.tr)
+          : (_waitingTooLong ? '回响尚未就绪，可下拉刷新'.tr : '回响生成中，暂不可翻转'.tr),
       button: _ready,
       child: Tooltip(
         message: _ready
-            ? '点击角标或双击卡片翻转'
-            : (_waitingTooLong ? '回响尚未就绪，可下拉刷新' : '回响生成中…'),
+            ? '点击角标或双击卡片翻转'.tr
+            : (_waitingTooLong ? '回响尚未就绪，可下拉刷新'.tr : '回响生成中…'.tr),
         child: GestureDetector(
           onTap: _ready ? _toggleSide : null,
           child: ClipRRect(
@@ -258,7 +259,7 @@ class _FlipMomentCardState extends State<_FlipMomentCard>
                             minimumSize: const Size(100, 48),
                           ),
                           icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('删除心笺'),
+                          label: Text('删除心笺'.tr),
                         ),
                       ),
                     ),
@@ -406,7 +407,7 @@ class _MomentBackCard extends StatelessWidget {
     final comment = moment.aiComment?.trim();
     final text = comment?.isNotEmpty == true
         ? comment!
-        : '流境正在等一阵风，把这张心笺背后的回声带回来。';
+        : '流境正在等一阵风，把这张心笺背后的回声带回来。'.tr;
 
     return RepaintBoundary(
       child: DecoratedBox(
@@ -441,7 +442,7 @@ class _MomentBackCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '回响',
+                        '回响'.tr,
                         style: GoogleFonts.notoSansSc(
                           fontSize: 12,
                           height: 1,
@@ -476,7 +477,7 @@ class _MomentBackCard extends StatelessWidget {
                   // Align(
                   //   alignment: Alignment.centerRight,
                   //   child: Text(
-                  //     '回响',
+                  //     '回响'.tr,
                   //     style: GoogleFonts.notoSansSc(
                   //       fontSize: 11,
                   //       height: 1,

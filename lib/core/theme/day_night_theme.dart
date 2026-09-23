@@ -1,12 +1,14 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
+
 enum AppThemeMode {
   system,
   light,
   dark;
 
   String get label => switch (this) {
-    AppThemeMode.system => '自动',
-    AppThemeMode.light => '日间',
-    AppThemeMode.dark => '夜间',
+    AppThemeMode.system => '自动'.tr,
+    AppThemeMode.light => '日间'.tr,
+    AppThemeMode.dark => '夜间'.tr,
   };
 }
 

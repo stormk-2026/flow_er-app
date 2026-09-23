@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -209,7 +210,7 @@ class GlassDialog extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              confirmLabel,
+                              confirmLabel.tr,
                               textAlign: TextAlign.center,
                             ),
                           );
@@ -236,7 +237,7 @@ class GlassDialog extends StatelessWidget {
                               textStyle: GoogleFonts.notoSansSc(fontSize: 14),
                             ),
                             child: Text(
-                              cancelLabel!,
+                              cancelLabel!.tr,
                               textAlign: TextAlign.center,
                             ),
                           );

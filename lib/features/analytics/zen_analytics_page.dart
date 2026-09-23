@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,7 +32,7 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
           error: (error, _) => SliverFillRemaining(
             hasScrollBody: false,
             child: _ErrorState(
-              message: '沉淀数据暂时不可用',
+              message: '沉淀数据暂时不可用'.tr,
               onRetry: () => ref.invalidate(analyticsStatsProvider(_period)),
             ),
           ),
@@ -50,7 +51,7 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '沉淀',
+                              '沉淀'.tr,
                               style: GoogleFonts.playfairDisplay(
                                 fontSize: 32,
                                 fontWeight: FontWeight.w600,
@@ -60,7 +61,7 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              '山静日长，万象归心。专注、心笺与觉察，会在此沉入清晰的纹理。',
+                              '山静日长，万象归心。专注、心笺与觉察，会在此沉入清晰的纹理。'.tr,
                               style: GoogleFonts.notoSansSc(
                                 fontSize: 13,
                                 height: 1.65,
@@ -103,23 +104,25 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
   }
 
   List<Widget> _buildStatCards(BuildContext context, AnalyticsStats stats) {
-    final periodLabel = _period.label;
+    final periodLabel = _period.label.tr;
     return [
       _StatCard(
         icon: Icons.hourglass_bottom_outlined,
         value: _hoursText(stats.duration.totalHours),
-        unit: '小时',
-        label: '总时长',
+        unit: '小时'.tr,
+        label: '总时长'.tr,
         hint: periodLabel,
         onTap: () => _showDurationDetail(context, stats),
       ),
       _StatCard(
         icon: Icons.auto_stories_outlined,
         value: '${stats.intents.total}',
-        unit: '条',
-        label: '心笺收录',
+        unit: '条'.tr,
+        label: '心笺收录'.tr,
         hint: stats.intents.inspirationPeakHour == null
             ? periodLabel
+            : UiText.english
+            ? 'Peak: ${stats.intents.inspirationPeakHour?.tr ?? ''}'
             : '高发：${stats.intents.inspirationPeakHour}',
         onTap: () => _showIntentDetail(context, stats),
       ),
@@ -127,16 +130,20 @@ class _ZenAnalyticsPageState extends ConsumerState<ZenAnalyticsPage> {
         icon: Icons.self_improvement_outlined,
         value: _scoreText(stats.soulPurity.score),
         unit: stats.soulPurity.score == null ? '' : '%',
-        label: '心流纯度',
-        hint: stats.sessionCount == 0 ? '尚无专注记录' : '基于 ${stats.sessionCount} 次',
+        label: '心流纯度'.tr,
+        hint: stats.sessionCount == 0
+            ? '尚无专注记录'.tr
+            : (UiText.english
+                  ? 'Based on ${stats.sessionCount} sessions'
+                  : '基于 ${stats.sessionCount} 次'),
         onTap: () => _showPurityDetail(context, stats),
       ),
       _StatCard(
         icon: Icons.waves_outlined,
         value: _scoreText(stats.awarenessIndex.score),
-        unit: stats.awarenessIndex.score == null ? '' : '分',
-        label: '觉察指数',
-        hint: stats.intents.total == 0 ? '尚无心笺记录' : '心笺深度与多样性',
+        unit: stats.awarenessIndex.score == null ? '' : '分'.tr,
+        label: '觉察指数'.tr,
+        hint: stats.intents.total == 0 ? '尚无心笺记录'.tr : '心笺深度与多样性'.tr,
         onTap: () => _showAwarenessDetail(context, stats),
       ),
     ];
@@ -152,7 +159,7 @@ class _PeriodMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<AnalyticsPeriod>(
-      tooltip: '切换周期',
+      tooltip: '切换周期'.tr,
       initialValue: period,
       color: AppColors.surface,
       elevation: 6,
@@ -161,7 +168,10 @@ class _PeriodMenu extends StatelessWidget {
       itemBuilder: (context) => AnalyticsPeriod.values.map((item) {
         return PopupMenuItem(
           value: item,
-          child: Text(item.label, style: GoogleFonts.notoSansSc(fontSize: 13)),
+          child: Text(
+            item.label.tr,
+            style: GoogleFonts.notoSansSc(fontSize: 13),
+          ),
         );
       }).toList(),
       child: Container(
@@ -175,7 +185,7 @@ class _PeriodMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              period.label,
+              period.label.tr,
               style: GoogleFonts.notoSansSc(
                 fontSize: 12,
                 color: AppColors.textSecondary,
@@ -340,7 +350,7 @@ class _PortraitCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  loading ? '正在感受…' : (portrait ?? '—'),
+                  loading ? '正在感受…'.tr : (portrait ?? '—'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.playfairDisplay(
@@ -352,7 +362,7 @@ class _PortraitCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  loading ? '心智质地生成中' : (interpretation ?? '暂无画像'),
+                  loading ? '心智质地生成中'.tr : (interpretation ?? '暂无画像'.tr),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansSc(
@@ -387,7 +397,7 @@ class _ErrorState extends StatelessWidget {
             style: GoogleFonts.notoSansSc(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
-          TextButton(onPressed: onRetry, child: const Text('重试')),
+          TextButton(onPressed: onRetry, child: Text('重试'.tr)),
         ],
       ),
     );
@@ -397,27 +407,29 @@ class _ErrorState extends StatelessWidget {
 void _showDurationDetail(BuildContext context, AnalyticsStats stats) {
   _showDetailSheet(
     context,
-    title: '总时长',
+    title: '总时长'.tr,
     children: [
       _MetricRow(
         metrics: [
-          _Metric('最长', _formatSeconds(stats.duration.longestSeconds)),
-          _Metric('平均', _formatSeconds(stats.duration.averageSeconds)),
-          _Metric('活跃', '${stats.duration.activeDays} 天'),
+          _Metric('最长'.tr, _formatSeconds(stats.duration.longestSeconds)),
+          _Metric('平均'.tr, _formatSeconds(stats.duration.averageSeconds)),
+          _Metric('活跃'.tr, '${stats.duration.activeDays} 天'),
           _Metric(
-            '频率',
-            '${stats.duration.frequencyPerWeek.toStringAsFixed(1)} 次/周',
+            '频率'.tr,
+            UiText.english
+                ? '${stats.duration.frequencyPerWeek.toStringAsFixed(1)} / week'
+                : '${stats.duration.frequencyPerWeek.toStringAsFixed(1)} 次/周',
           ),
         ],
       ),
-      _SectionTitle('触发方式'),
+      _SectionTitle('触发方式'.tr),
       _BarList(
         values: {
-          '三击屏幕': stats.duration.byTrigger['triple_tap'] ?? 0,
-          '扣置手机': stats.duration.byTrigger['flip_phone'] ?? 0,
+          '三击屏幕'.tr: stats.duration.byTrigger['triple_tap'] ?? 0,
+          '扣置手机'.tr: stats.duration.byTrigger['flip_phone'] ?? 0,
         },
       ),
-      _SectionTitle('时段分布'),
+      _SectionTitle('时段分布'.tr),
       _BarList(values: _orderedBuckets(stats.duration.byHourBucket)),
     ],
   );
@@ -427,18 +439,22 @@ void _showIntentDetail(BuildContext context, AnalyticsStats stats) {
   final deepest = stats.intents.deepestIntent;
   _showDetailSheet(
     context,
-    title: '心笺收录',
+    title: '心笺收录'.tr,
     children: [
-      _SectionTitle('五类分布'),
+      _SectionTitle('五类分布'.tr),
       _BarList(values: _orderedCategories(stats.intents.byCategory)),
-      _SectionTitle('深度最深'),
+      _SectionTitle('深度最深'.tr),
       _InfoPanel(
-        title: deepest?.preview.isNotEmpty == true ? deepest!.preview : '暂无心笺',
+        title: deepest?.preview.isNotEmpty == true
+            ? deepest!.preview
+            : '暂无心笺'.tr,
         subtitle: deepest == null
-            ? '记录会在这里慢慢浮现'
+            ? '记录会在这里慢慢浮现'.tr
+            : UiText.english
+            ? '${deepest.length} characters · ${_formatDate(deepest.createdAt)}'
             : '${deepest.length} 字 · ${_formatDate(deepest.createdAt)}',
       ),
-      _SectionTitle('心笺时段'),
+      _SectionTitle('心笺时段'.tr),
       _BarList(values: _orderedBuckets(stats.intents.byHourBucket)),
     ],
   );
@@ -447,24 +463,25 @@ void _showIntentDetail(BuildContext context, AnalyticsStats stats) {
 void _showPurityDetail(BuildContext context, AnalyticsStats stats) {
   _showDetailSheet(
     context,
-    title: '心流纯度',
+    title: '心流纯度'.tr,
     children: [
       _InfoPanel(
         title:
             '${_scoreText(stats.soulPurity.score)}${stats.soulPurity.score == null ? '' : '%'}',
-        subtitle:
-            '基线：${_formatSeconds(stats.soulPurity.targetSeconds ?? 1500)}',
+        subtitle: UiText.english
+            ? 'Baseline: ${_formatSeconds(stats.soulPurity.targetSeconds ?? 1500)}'
+            : '基线：${_formatSeconds(stats.soulPurity.targetSeconds ?? 1500)}',
       ),
-      _SectionTitle('因子构成'),
+      _SectionTitle('因子构成'.tr),
       _BarList(
         values: {
-          '时长达成': stats.soulPurity.factorsAvg['duration_score'] ?? 0,
-          '完整性': stats.soulPurity.factorsAvg['completion_score'] ?? 0,
-          '专注密度': stats.soulPurity.factorsAvg['density_score'] ?? 0,
+          '时长达成'.tr: stats.soulPurity.factorsAvg['duration_score'] ?? 0,
+          '完整性'.tr: stats.soulPurity.factorsAvg['completion_score'] ?? 0,
+          '专注密度'.tr: stats.soulPurity.factorsAvg['density_score'] ?? 0,
         },
         maxValue: 60,
       ),
-      _SectionTitle('趋势'),
+      _SectionTitle('趋势'.tr),
       _TrendLine(points: stats.soulPurity.trend),
     ],
   );
@@ -474,19 +491,19 @@ void _showAwarenessDetail(BuildContext context, AnalyticsStats stats) {
   final factors = stats.awarenessIndex.factorsAvg;
   _showDetailSheet(
     context,
-    title: '觉察指数',
+    title: '觉察指数'.tr,
     children: [
-      _SectionTitle('因子构成'),
+      _SectionTitle('因子构成'.tr),
       _BarList(
         values: {
-          '心笺数': factors['count_score'] ?? 0,
-          '心笺深度': factors['depth_score'] ?? 0,
-          '分类多样性': factors['diversity_score'] ?? 0,
-          '情绪记录率': (factors['mood_bonus_rate'] ?? 0) * 100,
+          '心笺数'.tr: factors['count_score'] ?? 0,
+          '心笺深度'.tr: factors['depth_score'] ?? 0,
+          '分类多样性'.tr: factors['diversity_score'] ?? 0,
+          '情绪记录率'.tr: (factors['mood_bonus_rate'] ?? 0) * 100,
         },
         maxValue: 40,
       ),
-      _SectionTitle('趋势'),
+      _SectionTitle('趋势'.tr),
       _TrendLine(points: stats.awarenessIndex.trend),
     ],
   );
@@ -699,7 +716,7 @@ class _TrendLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (points.isEmpty) {
-      return const _InfoPanel(title: '暂无趋势', subtitle: '数据积累后会显示曲线');
+      return _InfoPanel(title: '暂无趋势'.tr, subtitle: '数据积累后会显示曲线'.tr);
     }
     return SizedBox(
       height: 96,
@@ -759,12 +776,12 @@ class _TrendPainter extends CustomPainter {
 
 Map<String, int> _orderedBuckets(Map<String, int> raw) {
   const keys = ['清晨', '上午', '正午', '午后', '夜晚', '深夜'];
-  return {for (final key in keys) key: raw[key] ?? 0};
+  return {for (final key in keys) key.tr: raw[key] ?? 0};
 }
 
 Map<String, int> _orderedCategories(Map<String, int> raw) {
   const keys = ['巧思', '体悟', '心绪', '纪事', '摘录'];
-  return {for (final key in keys) key: raw[key] ?? 0};
+  return {for (final key in keys) key.tr: raw[key] ?? 0};
 }
 
 String _hoursText(double value) {
@@ -774,15 +791,15 @@ String _hoursText(double value) {
 String _scoreText(int? score) => score == null ? '—' : '$score';
 
 String _formatSeconds(int seconds) {
-  if (seconds <= 0) return '0 分钟';
+  if (seconds <= 0) return UiText.english ? '0 min' : '0 分钟';
   final minutes = seconds ~/ 60;
   final remain = seconds % 60;
-  if (minutes <= 0) return '$remain 秒';
-  if (remain == 0) return '$minutes 分钟';
-  return '$minutes 分 $remain 秒';
+  if (minutes <= 0) return UiText.english ? '${remain}s' : '$remain 秒';
+  if (remain == 0) return UiText.english ? '$minutes min' : '$minutes 分钟';
+  return UiText.english ? '$minutes min ${remain}s' : '$minutes 分 $remain 秒';
 }
 
 String _formatDate(DateTime? date) {
-  if (date == null) return '未知时间';
+  if (date == null) return '未知时间'.tr;
   return '${date.month}.${date.day}';
 }

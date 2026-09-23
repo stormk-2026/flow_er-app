@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -114,7 +115,7 @@ class _BrandTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '流',
+          '流'.tr,
           style: GoogleFonts.notoSerifSc(
             fontSize: 20,
             fontWeight: FontWeight.w500,
@@ -129,7 +130,7 @@ class _BrandTitle extends StatelessWidget {
         ),
         const SizedBox(width: 2),
         Text(
-          '境',
+          '境'.tr,
           style: GoogleFonts.notoSerifSc(
             fontSize: 20,
             fontWeight: FontWeight.w500,

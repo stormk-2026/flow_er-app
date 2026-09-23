@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -48,9 +49,11 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   Future<void> _showLogoutDialog(BuildContext context, String nickname) async {
     final confirmed = await showGlassDialog(
       context: context,
-      title: '退出登录',
-      message: '是否退出当前账号（$nickname）？',
-      confirmLabel: '退出登录',
+      title: '退出登录'.tr,
+      message: UiText.english
+          ? 'Sign out of $nickname?'
+          : '是否退出当前账号（$nickname）？',
+      confirmLabel: '退出登录'.tr,
       icon: Icons.logout_rounded,
     );
 
@@ -62,7 +65,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(authProvider).valueOrNull;
-    final themeMode = ref.watch(settingsProvider).themeMode;
+    final settings = ref.watch(settingsProvider);
+    final themeMode = settings.themeMode;
     final themeKey = '${themeMode.name}-${AppColors.background.toARGB32()}';
     final isLoggedIn = session != null;
 
@@ -202,7 +206,19 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
             ),
             // The glass covers the viewport, not just the page's safe area.
             if (!isLoggedIn)
-              GuestShellBlurOverlay(onLoginTap: () => _onIdentityTap(context)),
+              GuestShellBlurOverlay(
+                onLoginTap: () => _onIdentityTap(context),
+                languageActionLabel: settings.language == AppLanguage.chinese
+                    ? 'English'
+                    : '中文',
+                onLanguageTap: () => ref
+                    .read(settingsProvider.notifier)
+                    .setLanguage(
+                      settings.language == AppLanguage.chinese
+                          ? AppLanguage.english
+                          : AppLanguage.chinese,
+                    ),
+              ),
           ],
         ),
       ),
@@ -211,7 +227,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   void _handleSystemBack() {
     if (_shellHidden) {
-      _showBackHint('此刻仍在心流中，先三击圆点退出心流。');
+      _showBackHint('此刻仍在心流中，先三击圆点退出心流。'.tr);
       return;
     }
 
@@ -225,7 +241,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     }
 
     _lastBackPressedAt = now;
-    _showBackHint('再按一次退出应用');
+    _showBackHint('再按一次退出应用'.tr);
   }
 
   void _showBackHint(String message) {

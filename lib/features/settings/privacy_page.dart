@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/glass_dialog.dart';
@@ -39,6 +40,40 @@ AI 内容可能不准确，仅供自我记录与思考参考，不是心理诊�
 
 隐私与数据问题联系邮箱：gg5605568@gmail.com''';
 
+const privacyTextEn = '''Flow-er Privacy Notice (2026-09-23)
+
+We use your email address and a verification code to create an account. We store your nickname, journal text, images, and focus records to provide cross-device sync and statistics. Your phone keeps a local cache separated by account. Cloud data is hosted on Alibaba Cloud infrastructure. An older shared local database is not automatically assigned to a new account or uploaded.
+
+Before signing in or registering, you must actively agree to this notice and the AI Reflections Notice. After email verification, Flow-er enables AI reflections for your account. It sends journal text, limited relevant historical text, or aggregated focus data to the third-party large language model provider Moonshot AI for classification, reflections, and brief summaries. Journal images are not sent. Without the checkbox, a sign-in code is not sent and AI is not enabled.
+
+You may withdraw AI consent in Settings → Privacy & Data. This stops future AI processing but preserves your records, cloud sync, and numerical statistics. Withdrawal cannot retrieve data already sent. Signing in again and agreeing after verification grants consent again.
+
+AI output may be inaccurate. It is not a psychological diagnosis or medical advice. Please avoid entering unnecessary sensitive information or another person's private information.
+
+After deleting a journal entry, the content is removed from devices after successful sync. Offline deletions remain queued locally until sync. Account deletion requires another email verification. The account and related records are then deleted from the application database. Final backup and image-removal timelines will be stated in the published retention policy. This notice is still a beta version and does not claim any unverified third-party training or retention policy.
+
+The older shared local file remains on the original device for manual review and is not automatically deleted when switching accounts.
+
+Privacy and data contact: gg5605568@gmail.com''';
+
+const aiDisclosureTextEn = '''AI Reflections Notice (2026-09-23)
+
+Flow-er uses a third-party large language model (LLM) service to classify journal entries and generate card-back reflections and brief summaries. This sends content to a third-party AI provider; it does not publish it to other users.
+
+Service provider and data recipient: Moonshot AI.
+
+Data processed: your journal text, limited relevant historical text, and aggregated data such as focus count and duration. Journal images are not currently sent to the model. Please avoid entering unnecessary sensitive information or another person's private information.
+
+Consent: the checkbox on the sign-in page is off by default. Checking “I have read and agree to the Privacy Notice and AI Reflections Notice” means you agree to this third-party processing. Your consent is saved to your account after email verification. Reading the notices alone does not grant consent, and AI is not enabled before email verification.
+
+Consent remains effective without asking again for every entry. Enabling it does not automatically generate reflections for older entries created without consent. You can withdraw consent in Settings → Privacy & Data to stop future AI processing. Data already sent cannot be retrieved by withdrawing consent. Withdrawal does not delete journal entries or affect cloud sync or numerical statistics. Signing in and agreeing again after verification renews consent.
+
+AI content may be inaccurate. It is for personal reflection only, not a psychological diagnosis, medical advice, or a guarantee of fact.
+
+This notice is still a beta version. Third-party retention, deletion, and protection practices must be verified and completed before formal release. We do not make unverified promises such as “never stored” or “never used for training.”
+
+Privacy and data contact: gg5605568@gmail.com''';
+
 /// Public disclosure, available before login without requesting account data.
 class PrivacyNoticePage extends StatelessWidget {
   const PrivacyNoticePage({super.key, this.showAiDisclosure = false});
@@ -46,12 +81,14 @@ class PrivacyNoticePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(showAiDisclosure ? 'AI 回响功能说明' : '隐私说明')),
+    appBar: AppBar(title: Text((showAiDisclosure ? 'AI 回响功能说明' : '隐私说明').tr)),
     body: SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: SelectableText(
-          showAiDisclosure ? aiDisclosureText : privacyText,
+          showAiDisclosure
+              ? (UiText.english ? aiDisclosureTextEn : aiDisclosureText)
+              : (UiText.english ? privacyTextEn : privacyText),
           style: const TextStyle(height: 1.8),
         ),
       ),
@@ -84,7 +121,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         setState(() => _enabled = response.data?['ai_consent'] == true);
       }
     } catch (_) {
-      if (mounted) _message('暂时无法读取授权状态');
+      if (mounted) _message('暂时无法读取授权状态'.tr);
     }
   }
 
@@ -95,20 +132,23 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
     if (value) {
       final yes = await showGlassDialog(
         context: context,
-        title: '允许 AI 生成回响？',
-        message:
-            '将心笺文字、有限历史或专注聚合数据发送给第三方大语言模型服务提供方 Moonshot AI（月之暗面）进行分析，不发送心笺图片。你可以随时撤回授权；不同意不影响记录和同步。',
-        confirmLabel: '同意并开启',
-        cancelLabel: '暂不开启',
+        title: '允许 AI 生成回响？'.tr,
+        message: UiText.english
+            ? 'Journal text, limited history, or aggregated focus data will be sent to the third-party LLM provider Moonshot AI for analysis. Journal images are not sent. You may withdraw consent at any time; declining does not affect recording or syncing.'
+            : '将心笺文字、有限历史或专注聚合数据发送给第三方大语言模型服务提供方 Moonshot AI（月之暗面）进行分析，不发送心笺图片。你可以随时撤回授权；不同意不影响记录和同步。',
+        confirmLabel: '同意并开启'.tr,
+        cancelLabel: '暂不开启'.tr,
       );
       if (yes != true || !mounted) return;
     } else {
       final yes = await showGlassDialog(
         context: context,
-        title: '撤回 AI 授权？',
-        message: '停止后续 AI 回响与总结，不删除心笺，也不影响云同步和数字统计。已发送给第三方模型服务的数据无法通过此操作收回。',
-        confirmLabel: '撤回授权',
-        cancelLabel: '保留授权',
+        title: '撤回 AI 授权？'.tr,
+        message: UiText.english
+            ? 'Future AI reflections and summaries will stop. Your journal, cloud sync, and numerical statistics remain. Withdrawing consent cannot retrieve data already sent to the model provider.'
+            : '停止后续 AI 回响与总结，不删除心笺，也不影响云同步和数字统计。已发送给第三方模型服务的数据无法通过此操作收回。',
+        confirmLabel: '撤回授权'.tr,
+        cancelLabel: '保留授权'.tr,
       );
       if (yes != true || !mounted) return;
     }
@@ -123,7 +163,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         invalidateAnalyticsWidgetProviders(ref);
       }
     } catch (_) {
-      if (mounted) _message('设置未保存，请重试');
+      if (mounted) _message('设置未保存，请重试'.tr);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -132,10 +172,12 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
   Future<void> _delete() async {
     final yes = await showGlassDialog(
       context: context,
-      title: '注销账号？',
-      message: '这将删除云端账号与关联心笺、专注记录，并清理当前账号的新版本地缓存。操作不可撤销。请先在下方填写邮箱验证码。',
-      confirmLabel: '确认注销',
-      cancelLabel: '保留账号',
+      title: '注销账号？'.tr,
+      message: UiText.english
+          ? 'This deletes the cloud account, related journal and focus records, and this account’s newer local cache. This cannot be undone. Enter an email code below first.'
+          : '这将删除云端账号与关联心笺、专注记录，并清理当前账号的新版本地缓存。操作不可撤销。请先在下方填写邮箱验证码。',
+      confirmLabel: '确认注销'.tr,
+      cancelLabel: '保留账号'.tr,
       destructive: true,
     );
     if (yes != true || !mounted) return;
@@ -153,7 +195,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
       await ref.read(authProvider.notifier).accountDeleted();
       if (mounted) Navigator.pop(context);
     } catch (_) {
-      if (mounted) _message('注销未完成，请检查验证码及网络后重试');
+      if (mounted) _message('注销未完成，请检查验证码及网络后重试'.tr);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -169,22 +211,22 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
   Widget build(BuildContext context) {
     final email = ref.watch(authProvider).valueOrNull?.email;
     return Scaffold(
-      appBar: AppBar(title: const Text('隐私与数据')),
+      appBar: AppBar(title: Text('隐私与数据'.tr)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SelectableText(privacyText),
+          SelectableText(UiText.english ? privacyTextEn : privacyText),
           const SizedBox(height: 24),
           if (email != null) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('AI 回响功能说明'),
+              title: Text('AI 回响功能说明'.tr),
               subtitle: Text(
                 _enabled == null
-                    ? '授权状态读取中'
+                    ? '授权状态读取中'.tr
                     : _enabled!
-                    ? '已授权'
-                    : '尚未授权',
+                    ? '已授权'.tr
+                    : '尚未授权'.tr,
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
@@ -198,15 +240,15 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
               onPressed: _enabled == null || _busy
                   ? null
                   : () => _toggle(!_enabled!),
-              child: Text(_enabled == true ? '撤回 AI 授权' : '阅读并授权 AI 回响'),
+              child: Text((_enabled == true ? '撤回 AI 授权' : '阅读并授权 AI 回响').tr),
             ),
             const Divider(),
-            const Text('注销前需验证当前登录邮箱'),
+            Text('注销前需验证当前登录邮箱'.tr),
             TextField(
               controller: _code,
               maxLength: 6,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '邮箱验证码'),
+              decoration: InputDecoration(labelText: '邮箱验证码'.tr),
             ),
             TextButton(
               onPressed: _busy
@@ -215,13 +257,13 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                       final error = await ref
                           .read(authProvider.notifier)
                           .sendCode(email);
-                      if (mounted) _message(error ?? '验证码已发送');
+                      if (mounted) _message(error ?? '验证码已发送'.tr);
                     },
-              child: const Text('发送注销验证码'),
+              child: Text('发送注销验证码'.tr),
             ),
             TextButton(
               onPressed: _busy ? null : _delete,
-              child: const Text('注销账号'),
+              child: Text('注销账号'.tr),
             ),
           ],
         ],

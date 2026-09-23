@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -115,7 +116,7 @@ class _InspirationFlowPageState extends ConsumerState<InspirationFlowPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '心笺',
+                    '心笺'.tr,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 32,
                       fontWeight: FontWeight.w600,
@@ -126,14 +127,16 @@ class _InspirationFlowPageState extends ConsumerState<InspirationFlowPage>
                   const SizedBox(height: 10),
                   if (pending != null && pending > 0)
                     Text(
-                      '有 $pending 项仅保存在本机或等待同步，请联网后下拉重试',
+                      UiText.english
+                          ? '$pending item(s) are on this device or waiting to sync. Connect and pull down to retry.'
+                          : '有 $pending 项仅保存在本机或等待同步，请联网后下拉重试',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
                     ),
                   Text(
-                    '静水流深，思绪如絮。冥想中记下的念头，会在此拾取呈现。',
+                    '静水流深，思绪如絮。冥想中记下的念头，会在此拾取呈现。'.tr,
                     style: GoogleFonts.notoSansSc(
                       fontSize: 13,
                       height: 1.65,
@@ -152,7 +155,7 @@ class _InspirationFlowPageState extends ConsumerState<InspirationFlowPage>
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          '绿角可翻转 · 长按可删除 · 下拉刷新回响',
+                          '绿角可翻转 · 长按可删除 · 下拉刷新回响'.tr,
                           style: GoogleFonts.notoSansSc(
                             fontSize: 12,
                             height: 1.4,
@@ -179,9 +182,9 @@ class _InspirationFlowPageState extends ConsumerState<InspirationFlowPage>
             ),
             data: (moments) {
               if (moments.isEmpty) {
-                return const SliverFillRemaining(
+                return SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Text('尚无记录')),
+                  child: Center(child: Text('尚无记录'.tr)),
                 );
               }
 
@@ -216,9 +219,9 @@ Future<void> _confirmDelete(
 ) async {
   final confirmed = await showGlassDialog(
     context: context,
-    title: '删除心笺',
-    message: '这条心笺及背面的回响将从列表中移除。\n确定要删除吗？',
-    confirmLabel: '删除心笺',
+    title: '删除心笺'.tr,
+    message: '这条心笺及背面的回响将从列表中移除。\n确定要删除吗？'.tr,
+    confirmLabel: '删除心笺'.tr,
     icon: Icons.delete_outline_rounded,
     destructive: true,
   );

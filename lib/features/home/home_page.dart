@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,7 +43,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             Image.asset('assets/icons/flow_er_icon_trans.png', height: 28),
             const SizedBox(width: 8),
-            const Text('流境'),
+            Text('流境'.tr),
           ],
         ),
         actions: [
@@ -67,10 +68,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               controller: _inputController,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: '记下一条心笺',
-                labelText: '心笺',
+                hintText: '记下一条心笺'.tr,
+                labelText: '心笺'.tr,
               ),
             ),
             const SizedBox(height: 12),
@@ -79,8 +80,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: FilledButton(
                 onPressed: controllerState.isLoading ? null : _submit,
                 child: controllerState.isLoading
-                    ? const Text('Saving...')
-                    : const Text('Save Journal'),
+                    ? Text('Saving...')
+                    : Text('Save Journal'),
               ),
             ),
             const SizedBox(height: 16),

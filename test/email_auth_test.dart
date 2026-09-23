@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flow_er/features/auth/auth_page.dart';
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flow_er/providers/auth_provider.dart';
 import 'package:flow_er/repositories/auth_repository.dart';
 
@@ -37,6 +38,27 @@ class _FakeEmailAuth extends AuthController {
 }
 
 void main() {
+  testWidgets('login language toggle exposes English before sign-in', (
+    tester,
+  ) async {
+    UiText.english = false;
+    addTearDown(() => UiText.english = false);
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authProvider.overrideWith(_FakeEmailAuth.new)],
+        child: const MaterialApp(home: AuthPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    expect(find.text('Send verification code'), findsOneWidget);
+    expect(find.text('Privacy Notice'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('邮箱格式校验、发送、冷却和新用户昵称流程', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -57,7 +58,7 @@ class _SplashPageState extends State<SplashPage> {
                   const ZenRipple(size: 240),
                   const SizedBox(height: 28),
                   Text(
-                    '流  境',
+                    '流  境'.tr,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 26,
                       fontWeight: FontWeight.w400,
@@ -69,7 +70,7 @@ class _SplashPageState extends State<SplashPage> {
                   const LotusDivider(width: 220),
                   const Spacer(flex: 4),
                   Text(
-                    '万籁俱寂，心生欢喜。',
+                    '万籁俱寂，心生欢喜。'.tr,
                     style: GoogleFonts.notoSansSc(
                       fontSize: 14,
                       fontWeight: FontWeight.w300,

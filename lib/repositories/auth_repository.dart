@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:dio/dio.dart';
 
 import '../services/api/api_client.dart';
@@ -139,9 +140,9 @@ String authErrorMessage(Object error) {
     if (detail is Map && detail['message'] is String) {
       return detail['message'] as String;
     }
-    if (error.response?.statusCode == 422) return '请检查邮箱和验证码格式';
-    if (error.response?.statusCode == 429) return '请求过于频繁，请稍后再试';
-    if (error.response == null) return '网络连接失败，请检查网络后重试';
+    if (error.response?.statusCode == 422) return '请检查邮箱和验证码格式'.tr;
+    if (error.response?.statusCode == 429) return '请求过于频繁，请稍后再试'.tr;
+    if (error.response == null) return '网络连接失败，请检查网络后重试'.tr;
   }
-  return '操作暂未完成，请稍后重试';
+  return '操作暂未完成，请稍后重试'.tr;
 }

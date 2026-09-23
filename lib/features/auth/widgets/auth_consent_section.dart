@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -44,7 +45,7 @@ class AuthConsentSection extends StatelessWidget {
         Checkbox(
           key: const ValueKey('privacy-consent'),
           value: privacyAccepted,
-          semanticLabel: '我已阅读并同意隐私说明和 AI 回响功能说明',
+          semanticLabel: '我已阅读并同意隐私说明和 AI 回响功能说明'.tr,
           activeColor: const Color(0xFF516356),
           onChanged: enabled
               ? (value) => onPrivacyChanged(value ?? false)
@@ -54,10 +55,10 @@ class AuthConsentSection extends StatelessWidget {
           child: Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('我已阅读并同意', style: style),
-              link('《隐私说明》'),
-              Text('和', style: style),
-              link('《AI 回响功能说明》', ai: true),
+              Text('我已阅读并同意'.tr, style: style),
+              link('《隐私说明》'.tr),
+              Text('和'.tr, style: style),
+              link('《AI 回响功能说明》'.tr, ai: true),
             ],
           ),
         ),

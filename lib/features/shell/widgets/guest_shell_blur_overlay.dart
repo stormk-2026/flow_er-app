@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -8,9 +9,16 @@ import '../../../core/theme/app_colors.dart';
 
 /// 未登录时覆盖整个屏幕；玻璃不受安全区裁切，登录入口保留安全边距。
 class GuestShellBlurOverlay extends StatelessWidget {
-  const GuestShellBlurOverlay({super.key, required this.onLoginTap});
+  const GuestShellBlurOverlay({
+    super.key,
+    required this.onLoginTap,
+    this.languageActionLabel,
+    this.onLanguageTap,
+  });
 
   final VoidCallback onLoginTap;
+  final String? languageActionLabel;
+  final VoidCallback? onLanguageTap;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +76,7 @@ class GuestShellBlurOverlay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '轻触，入静',
+                          '轻触，入静'.tr,
                           style: GoogleFonts.notoSansSc(
                             fontSize: 12,
                             letterSpacing: 2,
@@ -82,6 +90,25 @@ class GuestShellBlurOverlay extends StatelessWidget {
               ),
             ),
           ),
+          if (onLanguageTap != null && languageActionLabel != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 20, top: 8),
+                  child: TextButton(
+                    onPressed: onLanguageTap,
+                    child: Text(
+                      languageActionLabel!,
+                      style: GoogleFonts.notoSansSc(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

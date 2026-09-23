@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:async';
 import 'dart:ui';
 
@@ -84,7 +85,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
   late final AppAudioService _audioService;
 
   /// 进入页面时 mock 一条「今日宜」，登录后展示。
-  late final String _dailyTip = HomeGreeting.mockDailyTip();
+  late final int _dailyTipSeed = DateTime.now().millisecondsSinceEpoch;
 
   @override
   void initState() {
@@ -219,7 +220,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     _resumeActiveSegment();
     _wasAwayDuringFlow = false;
     unawaited(_audioService.resumeFlowAmbient());
-    _showGentleHint(_returnFromAwayHint);
+    _showGentleHint(_returnFromAwayHint.tr);
   }
 
   // ── 三击检测 ──────────────────────────────────────────────────────────────
@@ -476,7 +477,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
       await _showMoment(text);
     } catch (_) {
       if (_phase != _FocusPhase.focused || !mounted) return;
-      await _showMoment(_fallbackFocusMoment);
+      await _showMoment(_fallbackFocusMoment.tr);
     }
   }
 
@@ -525,7 +526,10 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
     setState(() => _sessionJournalCount++);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('已归入心笺', style: TextStyle(color: AppColors.textPrimary)),
+        content: Text(
+          '已归入心笺'.tr,
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         backgroundColor: AppColors.surface,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
@@ -588,8 +592,8 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
                 // 三击模式：下滑提示 + 退出提示（环形下方）
                 if (_phase == _FocusPhase.focused && !_showCapture)
-                  const _BreathText(
-                    text: '下滑记下此刻\n再次三击退出心流',
+                  _BreathText(
+                    text: '下滑记下此刻\n再次三击退出心流'.tr,
                     visible: true,
                     top: false,
                   ),
@@ -608,7 +612,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
           },
           child: _IdleContent(
             phase: _phase,
-            dailyTip: _dailyTip,
+            dailyTip: HomeGreeting.mockDailyTip(seed: _dailyTipSeed),
             showFocusHint: widget.featuresEnabled,
             tapNotifier: _tapRippleNotifier,
           ),
@@ -784,7 +788,7 @@ class _FlowMuteButton extends StatelessWidget {
       right: 14,
       child: SafeArea(
         child: IconButton(
-          tooltip: muted ? '开启声音' : '静音',
+          tooltip: muted ? '开启声音'.tr : '静音'.tr,
           onPressed: onTap,
           icon: FlowSoundIcon(
             muted: muted,
@@ -818,20 +822,30 @@ class _FocusReport {
 
   String get durationText {
     final minutes = duration.inMinutes;
-    if (minutes < 1) return '${duration.inSeconds} 秒';
+    if (minutes < 1) {
+      return UiText.english
+          ? '${duration.inSeconds}s'
+          : '${duration.inSeconds} 秒';
+    }
     final hours = minutes ~/ 60;
     final remainMinutes = minutes % 60;
-    if (hours == 0) return '$minutes 分钟';
-    if (remainMinutes == 0) return '$hours 小时';
-    return '$hours 小时 $remainMinutes 分钟';
+    if (hours == 0) return UiText.english ? '$minutes min' : '$minutes 分钟';
+    if (remainMinutes == 0) return UiText.english ? '$hours hr' : '$hours 小时';
+    return UiText.english
+        ? '$hours hr $remainMinutes min'
+        : '$hours 小时 $remainMinutes 分钟';
   }
 
   String get journalText {
-    return journalCount == 0 ? '未落心笺' : '留下 $journalCount 枚心笺';
+    return journalCount == 0
+        ? '未落心笺'.tr
+        : (UiText.english ? '$journalCount entries' : '留下 $journalCount 枚心笺');
   }
 
   String get awayText {
-    return awayCount == 0 ? '未曾离席' : '离席 $awayCount 次';
+    return awayCount == 0
+        ? '未曾离席'.tr
+        : (UiText.english ? '$awayCount breaks' : '离席 $awayCount 次');
   }
 }
 
@@ -870,7 +884,7 @@ class _FocusReportSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '本次入静',
+                  '本次入静'.tr,
                   style: GoogleFonts.notoSerifSc(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
@@ -882,10 +896,10 @@ class _FocusReportSheet extends StatelessWidget {
                   spacing: 12,
                   runSpacing: 10,
                   children: [
-                    _ReportMetric(label: '时长', value: report.durationText),
-                    _ReportMetric(label: '心笺', value: report.journalText),
+                    _ReportMetric(label: '时长'.tr, value: report.durationText),
+                    _ReportMetric(label: '心笺'.tr, value: report.journalText),
                     if (report.awayCount > 0)
-                      _ReportMetric(label: '离席', value: report.awayText),
+                      _ReportMetric(label: '离席'.tr, value: report.awayText),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -903,7 +917,7 @@ class _FocusReportSheet extends StatelessWidget {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text(
-                      '收下',
+                      '收下'.tr,
                       style: GoogleFonts.notoSansSc(
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -921,15 +935,15 @@ class _FocusReportSheet extends StatelessWidget {
 
   String _reportCopy(_FocusReport report) {
     if (report.awayCount > 2) {
-      return '今天的风有些杂。流境只替你记下真正留在此处的时间。';
+      return '今天的风有些杂。流境只替你记下真正留在此处的时间。'.tr;
     }
     if (report.awayCount > 0) {
-      return '有些事来过，又被你放下了。这里记录的是你真正留在此处的时间。';
+      return '有些事来过，又被你放下了。这里记录的是你真正留在此处的时间。'.tr;
     }
     if (report.journalCount > 0) {
-      return '这一段静里，你没有急着追赶，只把浮起的念头轻轻安放。';
+      return '这一段静里，你没有急着追赶，只把浮起的念头轻轻安放。'.tr;
     }
-    return '这一段时间没有被催促，也没有被打断。你只是安静地，把自己收回来了一点。';
+    return '这一段时间没有被催促，也没有被打断。你只是安静地，把自己收回来了一点。'.tr;
   }
 }
 

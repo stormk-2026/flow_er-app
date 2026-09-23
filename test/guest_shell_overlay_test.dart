@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flow_er/core/theme/app_colors.dart';
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flow_er/core/theme/day_night_theme.dart';
 import 'package:flow_er/features/auth/auth_page.dart';
 import 'package:flow_er/features/shell/main_scaffold.dart';
@@ -13,7 +14,10 @@ import 'package:flow_er/providers/settings_provider.dart';
 
 void main() {
   setUp(() => GoogleFonts.config.allowRuntimeFetching = false);
-  tearDown(() => appThemeMode = AppThemeMode.system);
+  tearDown(() {
+    appThemeMode = AppThemeMode.system;
+    UiText.english = false;
+  });
 
   for (final mode in [AppThemeMode.dark, AppThemeMode.light]) {
     testWidgets('${mode.name}: guest glass covers header and safe areas', (
@@ -47,7 +51,11 @@ void main() {
       expect(find.text('轻触，入静'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('轻触，入静'));
+      await tester.tap(find.text('English'));
+      await tester.pump();
+      expect(find.text('Tap to begin'), findsOneWidget);
+
+      await tester.tap(find.text('Tap to begin'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(AuthPage), findsOneWidget);

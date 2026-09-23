@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flow_er/features/inspiration/models/inspiration_moment.dart';
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flow_er/features/inspiration/widgets/inspiration_moment_card.dart';
 import 'package:flow_er/models/app_database.dart';
 import 'package:flow_er/features/inspiration/inspiration_flow_page.dart';
@@ -48,6 +49,20 @@ Widget fixture(
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+
+  testWidgets('English chrome leaves journal and AI reflection untouched', (
+    tester,
+  ) async {
+    UiText.english = true;
+    addTearDown(() => UiText.english = false);
+    await tester.pumpWidget(fixture(moment(comment: '此刻不必匆忙。')));
+    await tester.pumpAndSettle();
+    expect(find.text('慢下来，听见这一刻。'), findsWidgets);
+    await tester.tap(find.byIcon(Icons.swap_horiz_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Reflection'), findsOneWidget);
+    expect(find.text('此刻不必匆忙。'), findsOneWidget);
+  });
 
   testWidgets('Corner belongs to rotating face on both front and back', (
     tester,

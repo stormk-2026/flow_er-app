@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../repositories/auth_repository.dart';
 import 'widgets/email_code_input.dart';
 import 'widgets/auth_consent_section.dart';
@@ -70,11 +72,11 @@ class _AuthPageState extends ConsumerState<AuthPage>
     final email = _emailController.text.trim().toLowerCase();
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email) ||
         email.length > 254) {
-      _showSnack('请输入正确的邮箱');
+      _showSnack('请输入正确的邮箱'.tr);
       return;
     }
     if (!_privacyAccepted) {
-      _showSnack('请先阅读并同意隐私说明和 AI 回响功能说明');
+      _showSnack('请先阅读并同意隐私说明和 AI 回响功能说明'.tr);
       return;
     }
     setState(() => _loading = true);
@@ -97,7 +99,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
     if (_loading) return;
     final code = _codeController.text.trim();
     if (!RegExp(r'^[0-9]{6}$').hasMatch(code)) {
-      _showSnack('请输入 6 位邮箱验证码');
+      _showSnack('请输入 6 位邮箱验证码'.tr);
       return;
     }
     setState(() => _loading = true);
@@ -112,7 +114,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
       if (!mounted) return;
       setState(() => _loading = false);
       if (result.aiConsentSaveFailed) {
-        _showSnack('邮箱验证成功，但 AI 授权未能确认。请在「设置 → 隐私与数据」中检查并重试。');
+        _showSnack('邮箱验证成功，但 AI 授权未能确认。请在「设置 → 隐私与数据」中检查并重试。'.tr);
       }
       if (result.isNewUser) {
         _goStep(_AuthStep.nickname);
@@ -131,7 +133,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
     if (_loading) return;
     final nickname = _nicknameController.text.trim();
     if (nickname.isEmpty) {
-      _showSnack('请留下一个称呼');
+      _showSnack('请留下一个称呼'.tr);
       return;
     }
     setState(() => _loading = true);
@@ -172,7 +174,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
     _codeController.clear();
     setState(() => _countdown = 60);
     _tickCountdown();
-    _showSnack('验证码已重新发送，请查看邮箱');
+    _showSnack('验证码已重新发送，请查看邮箱'.tr);
   }
 
   void _showSnack(String msg) {
@@ -183,6 +185,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
   @override
   Widget build(BuildContext context) {
+    final language = ref.watch(settingsProvider).language;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -203,6 +206,22 @@ class _AuthPageState extends ConsumerState<AuthPage>
                   }
                 },
         ),
+        actions: [
+          TextButton(
+            onPressed: () => ref
+                .read(settingsProvider.notifier)
+                .setLanguage(
+                  language == AppLanguage.chinese
+                      ? AppLanguage.english
+                      : AppLanguage.chinese,
+                ),
+            child: Text(
+              language == AppLanguage.chinese ? 'English' : '中文',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: SafeArea(
         child: FadeTransition(
@@ -267,7 +286,7 @@ class _EmailStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(title: '入静', subtitle: '以邮箱为门，\n无需记忆，无需繁礼。'),
+        _Header(title: '入静'.tr, subtitle: '以邮箱为门，\n无需记忆，无需繁礼。'.tr),
         const SizedBox(height: 40),
         TextField(
           controller: controller,
@@ -279,7 +298,7 @@ class _EmailStep extends StatelessWidget {
           enabled: !loading,
           inputFormatters: [LengthLimitingTextInputFormatter(254)],
           style: GoogleFonts.notoSansSc(fontSize: 16),
-          decoration: _inputDecoration('邮箱地址，例如 name@qq.com'),
+          decoration: _inputDecoration('邮箱地址，例如 name@qq.com'.tr),
           onSubmitted: (_) => onSubmit(),
           onChanged: onEmailChanged,
         ),
@@ -291,13 +310,13 @@ class _EmailStep extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         _PrimaryButton(
-          label: '获取验证码',
+          label: '获取验证码'.tr,
           loading: loading,
           onPressed: privacyAccepted ? onSubmit : null,
         ),
         const SizedBox(height: 20),
         Text(
-          '验证邮箱后自动注册或登录，无需设置密码',
+          '验证邮箱后自动注册或登录，无需设置密码'.tr,
           textAlign: TextAlign.center,
           style: GoogleFonts.notoSansSc(
             fontSize: 12,
@@ -335,7 +354,12 @@ class _CodeStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(title: '验证', subtitle: '验证码已发送至\n$email\n5 分钟内有效，未收到请检查垃圾邮件'),
+        _Header(
+          title: '验证'.tr,
+          subtitle: UiText.english
+              ? 'A code was sent to\n$email\nValid for 5 minutes. Check spam if it does not arrive.'
+              : '验证码已发送至\n$email\n5 分钟内有效，未收到请检查垃圾邮件',
+        ),
         const SizedBox(height: 40),
         EmailCodeInput(
           controller: controller,
@@ -343,13 +367,17 @@ class _CodeStep extends StatelessWidget {
           onSubmitted: onSubmit,
         ),
         const SizedBox(height: 32),
-        _PrimaryButton(label: '确认', loading: loading, onPressed: onSubmit),
+        _PrimaryButton(label: '确认'.tr, loading: loading, onPressed: onSubmit),
         const SizedBox(height: 20),
         Center(
           child: GestureDetector(
             onTap: canResend ? onResend : null,
             child: Text(
-              canResend ? '重新发送' : '${countdown}s 后可重新发送',
+              canResend
+                  ? '重新发送'.tr
+                  : UiText.english
+                  ? 'Resend in ${countdown}s'
+                  : '${countdown}s 后可重新发送',
               style: GoogleFonts.notoSansSc(
                 fontSize: 13,
                 color: canResend
@@ -383,7 +411,7 @@ class _NicknameStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        _Header(title: '相逢', subtitle: '如何称呼你？\n一两个字即可，无需多言。'),
+        _Header(title: '相逢'.tr, subtitle: '如何称呼你？\n一两个字即可，无需多言。'.tr),
         const SizedBox(height: 40),
         TextField(
           controller: controller,
@@ -391,11 +419,11 @@ class _NicknameStep extends StatelessWidget {
           maxLength: 6,
           enabled: !loading,
           style: GoogleFonts.notoSansSc(fontSize: 16),
-          decoration: _inputDecoration('一个你喜欢的称呼').copyWith(counterText: ''),
+          decoration: _inputDecoration('一个你喜欢的称呼'.tr).copyWith(counterText: ''),
           onSubmitted: (_) => onSubmit(),
         ),
         const SizedBox(height: 32),
-        _PrimaryButton(label: '进入流境', loading: loading, onPressed: onSubmit),
+        _PrimaryButton(label: '进入流境'.tr, loading: loading, onPressed: onSubmit),
       ],
     );
   }

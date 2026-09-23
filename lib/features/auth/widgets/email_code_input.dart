@@ -1,3 +1,4 @@
+import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -41,7 +42,7 @@ class _EmailCodeInputState extends State<EmailCodeInput> {
         return Column(
           children: [
             Text(
-              '输入 6 位验证码',
+              '输入 6 位验证码'.tr,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansSc(
                 fontSize: 13,
@@ -100,7 +101,7 @@ class _EmailCodeInputState extends State<EmailCodeInput> {
                     ),
                   ),
                   Semantics(
-                    label: '6 位邮箱验证码',
+                    label: '6 位邮箱验证码'.tr,
                     child: TextField(
                       key: const ValueKey('email-code-editor'),
                       controller: widget.controller,
@@ -125,7 +126,7 @@ class _EmailCodeInputState extends State<EmailCodeInput> {
                       textAlign: TextAlign.center,
                       expands: true,
                       maxLines: null,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
