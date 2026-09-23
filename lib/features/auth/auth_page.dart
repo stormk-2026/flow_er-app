@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../repositories/auth_repository.dart';
+import 'widgets/email_code_input.dart';
+import 'widgets/auth_consent_section.dart';
 
 // 三阶段：填邮箱 → 填验证码 → 新用户留昵称
 enum _AuthStep { email, code, nickname }
@@ -28,6 +30,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
   final _nicknameController = TextEditingController();
 
   bool _loading = false;
+  bool _privacyAccepted = false;
   int _countdown = 0;
   Timer? _resendTimer;
   String? _sentEmail;
@@ -70,6 +73,10 @@ class _AuthPageState extends ConsumerState<AuthPage>
       _showSnack('请输入正确的邮箱');
       return;
     }
+    if (!_privacyAccepted) {
+      _showSnack('请先阅读并同意隐私说明和 AI 回响功能说明');
+      return;
+    }
     setState(() => _loading = true);
     final error = await ref.read(authProvider.notifier).sendCode(email);
     if (!mounted) return;
@@ -97,9 +104,16 @@ class _AuthPageState extends ConsumerState<AuthPage>
     try {
       final result = await ref
           .read(authProvider.notifier)
-          .verifyCode(email: _sentEmail!, code: code);
+          .verifyCode(
+            email: _sentEmail!,
+            code: code,
+            enableAi: _privacyAccepted,
+          );
       if (!mounted) return;
       setState(() => _loading = false);
+      if (result.aiConsentSaveFailed) {
+        _showSnack('邮箱验证成功，但 AI 授权未能确认。请在「设置 → 隐私与数据」中检查并重试。');
+      }
       if (result.isNewUser) {
         _goStep(_AuthStep.nickname);
       } else {
@@ -162,7 +176,9 @@ class _AuthPageState extends ConsumerState<AuthPage>
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -198,6 +214,12 @@ class _AuthPageState extends ConsumerState<AuthPage>
                 controller: _emailController,
                 loading: _loading,
                 onSubmit: _submitEmail,
+                privacyAccepted: _privacyAccepted,
+                onPrivacyChanged: (value) =>
+                    setState(() => _privacyAccepted = value),
+                onEmailChanged: (_) => setState(() {
+                  _privacyAccepted = false;
+                }),
               ),
               _AuthStep.code => _CodeStep(
                 email: _sentEmail!,
@@ -227,11 +249,17 @@ class _EmailStep extends StatelessWidget {
     required this.controller,
     required this.loading,
     required this.onSubmit,
+    required this.privacyAccepted,
+    required this.onPrivacyChanged,
+    required this.onEmailChanged,
   });
 
   final TextEditingController controller;
   final bool loading;
   final VoidCallback onSubmit;
+  final bool privacyAccepted;
+  final ValueChanged<bool> onPrivacyChanged;
+  final ValueChanged<String> onEmailChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -253,9 +281,20 @@ class _EmailStep extends StatelessWidget {
           style: GoogleFonts.notoSansSc(fontSize: 16),
           decoration: _inputDecoration('邮箱地址，例如 name@qq.com'),
           onSubmitted: (_) => onSubmit(),
+          onChanged: onEmailChanged,
         ),
-        const SizedBox(height: 32),
-        _PrimaryButton(label: '获取验证码', loading: loading, onPressed: onSubmit),
+        const SizedBox(height: 20),
+        AuthConsentSection(
+          privacyAccepted: privacyAccepted,
+          enabled: !loading,
+          onPrivacyChanged: onPrivacyChanged,
+        ),
+        const SizedBox(height: 24),
+        _PrimaryButton(
+          label: '获取验证码',
+          loading: loading,
+          onPressed: privacyAccepted ? onSubmit : null,
+        ),
         const SizedBox(height: 20),
         Text(
           '验证邮箱后自动注册或登录，无需设置密码',
@@ -298,20 +337,10 @@ class _CodeStep extends StatelessWidget {
         const SizedBox(height: 8),
         _Header(title: '验证', subtitle: '验证码已发送至\n$email\n5 分钟内有效，未收到请检查垃圾邮件'),
         const SizedBox(height: 40),
-        TextField(
+        EmailCodeInput(
           controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
           enabled: !loading,
-          autofillHints: const [AutofillHints.oneTimeCode],
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(6),
-          ],
-          style: GoogleFonts.notoSansSc(fontSize: 24, letterSpacing: 8),
-          textAlign: TextAlign.center,
-          decoration: _inputDecoration('6 位验证码'),
-          onSubmitted: (_) => onSubmit(),
+          onSubmitted: onSubmit,
         ),
         const SizedBox(height: 32),
         _PrimaryButton(label: '确认', loading: loading, onPressed: onSubmit),
@@ -418,7 +447,7 @@ class _PrimaryButton extends StatelessWidget {
 
   final String label;
   final bool loading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +476,14 @@ class _PrimaryButton extends StatelessWidget {
 InputDecoration _inputDecoration(String hint) {
   return InputDecoration(
     hintText: hint,
-    hintStyle: GoogleFonts.notoSansSc(fontSize: 14, color: AppColors.textMuted),
+    // Explicit spacing keeps the hint from inheriting the OTP digit spacing.
+    hintStyle: GoogleFonts.notoSansSc(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+      letterSpacing: 0.3,
+      color: AppColors.textMuted,
+    ),
     filled: true,
     fillColor: AppColors.surface,
     counterText: '',

@@ -17,8 +17,9 @@ class FocusStats {
 final focusStatsProvider = Provider<FocusStats>((ref) {
   final sessions = ref.watch(focusSessionsProvider).valueOrNull ?? const [];
 
-  final counted =
-      sessions.where((s) => !s.excludedFromStats).toList(growable: false);
+  final counted = sessions
+      .where((s) => !s.excludedFromStats)
+      .toList(growable: false);
   if (counted.isEmpty) {
     return const FocusStats();
   }

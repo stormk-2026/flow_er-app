@@ -10,43 +10,50 @@ class ImageUploadService {
 
   Dio get _api => ApiClient.instance.dio;
 
-  Future<List<String>> uploadImages(List<String> paths) async {
-    final urls = <String>[];
-    for (final path in paths) {
-      if (_isRemoteUrl(path)) {
-        urls.add(path);
-        continue;
-      }
-      urls.add(await uploadImage(File(path)));
+  Future<List<String>> uploadImages(
+    List<String> paths, {
+    Options? options,
+    Future<void> Function(List<String> paths)? onProgress,
+  }) async {
+    final urls = List<String>.from(paths);
+    for (var index = 0; index < urls.length; index++) {
+      final path = urls[index];
+      if (_isRemoteUrl(path)) continue;
+      urls[index] = await uploadImage(File(path), options: options);
+      // Preserve successful uploads even when a later image fails.
+      await onProgress?.call(List<String>.unmodifiable(urls));
     }
     return urls;
   }
 
-  Future<String> uploadImage(File file) async {
+  Future<String> uploadImage(File file, {Options? options}) async {
     final ext = _extensionFor(file.path);
     final contentType = _contentTypeFor(ext);
 
     final presignResp = await _api.post<Map<String, dynamic>>(
       '/api/v1/uploads/presign',
+      options: options,
       data: {'ext': ext, 'content_type': contentType},
     );
     final presign = presignResp.data ?? const <String, dynamic>{};
     final endpoint = presign['endpoint']?.toString();
     final url = presign['url']?.toString();
-    if (endpoint == null || endpoint.isEmpty || url == null || url.isEmpty) {
+    final fields = presign['fields'];
+    if (endpoint == null ||
+        Uri.tryParse(endpoint)?.scheme != 'https' ||
+        url == null ||
+        Uri.tryParse(url)?.scheme != 'https' ||
+        fields is! Map ||
+        fields['x-oss-signature-version'] != 'OSS4-HMAC-SHA256') {
       throw const ImageUploadException('图片上传授权无效');
     }
 
     final form = FormData();
-    form.fields
-      ..add(MapEntry('key', presign['key']?.toString() ?? ''))
-      ..add(
-        MapEntry('OSSAccessKeyId', presign['ossaccessid']?.toString() ?? ''),
-      )
-      ..add(MapEntry('policy', presign['policy']?.toString() ?? ''))
-      ..add(MapEntry('signature', presign['signature']?.toString() ?? ''))
-      ..add(MapEntry('Content-Type', contentType))
-      ..add(const MapEntry('success_action_status', '200'));
+    form.fields.addAll(
+      fields.entries.map(
+        (entry) => MapEntry(entry.key.toString(), entry.value.toString()),
+      ),
+    );
     form.files.add(
       MapEntry(
         'file',
@@ -58,7 +65,18 @@ class ImageUploadService {
       ),
     );
 
-    await Dio().post<void>(endpoint, data: form);
+    final storage = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
+    try {
+      await storage.post<void>(endpoint, data: form);
+    } finally {
+      storage.close();
+    }
     return url;
   }
 

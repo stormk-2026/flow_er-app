@@ -89,7 +89,9 @@ class InspirationMoment {
         ? InspirationMode.expanded
         : InspirationMode.quick;
 
-    final stableKey = intent.serverId ?? '${intent.id}';
+    final stableKey = intent.clientId.isNotEmpty
+        ? intent.clientId
+        : intent.serverId ?? '${intent.id}';
     final seed = _stableHash(
       '$stableKey-${intent.createdAt.millisecondsSinceEpoch}',
     );

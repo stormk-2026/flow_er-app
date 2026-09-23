@@ -15,6 +15,7 @@ import '../../providers/settings_provider.dart';
 import '../../services/audio/app_audio_service.dart';
 import '../../services/sensors/focus_sensor_service.dart';
 import 'widgets/thought_capture_overlay.dart';
+import 'widgets/flow_sound_icon.dart';
 
 enum _FocusTrigger { tap, sensor }
 
@@ -372,10 +373,11 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
 
     _focusStartedAt = null;
     final triggerType = report.trigger == _FocusTrigger.tap ? 'tap' : 'sensor';
+    final repository = ref.read(focusSessionRepositoryProvider);
+    final syncService = ref.read(focusSessionSyncServiceProvider);
 
     unawaited(
-      ref
-          .read(focusSessionRepositoryProvider)
+      repository
           .recordSession(
             startedAt: report.startedAt,
             endedAt: report.endedAt,
@@ -383,9 +385,7 @@ class _StatePerceptionPageState extends ConsumerState<StatePerceptionPage>
             durationSecondsOverride: report.duration.inSeconds,
           )
           .then((session) async {
-            await ref
-                .read(focusSessionSyncServiceProvider)
-                .pushSession(session);
+            await syncService.pushSession(session);
             if (!mounted) return;
             invalidateAnalyticsWidgetProviders(ref);
           }),
@@ -786,9 +786,8 @@ class _FlowMuteButton extends StatelessWidget {
         child: IconButton(
           tooltip: muted ? '开启声音' : '静音',
           onPressed: onTap,
-          icon: Icon(
-            muted ? Icons.volume_off_rounded : Icons.graphic_eq_rounded,
-            size: 24,
+          icon: FlowSoundIcon(
+            muted: muted,
             color: AppColors.textMuted.withValues(alpha: 0.82),
           ),
         ),
@@ -1188,10 +1187,15 @@ class _BlurOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (blurAmount <= 0) return const SizedBox.shrink();
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
-      child: Container(
-        color: Colors.white.withValues(alpha: blurAmount / 18 * 0.15),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
+        child: ColoredBox(
+          key: const ValueKey('focus-glass-surface'),
+          color: AppColors.surface.withValues(
+            alpha: blurAmount / 18 * (isNightTheme ? 0.55 : 0.15),
+          ),
+        ),
       ),
     );
   }

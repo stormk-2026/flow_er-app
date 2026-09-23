@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'dart:io';
+import '../../../core/widgets/private_journal_image.dart';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,72 +32,258 @@ class _FlipMomentCard extends StatefulWidget {
   State<_FlipMomentCard> createState() => _FlipMomentCardState();
 }
 
-class _FlipMomentCardState extends State<_FlipMomentCard> {
+class _FlipMomentCardState extends State<_FlipMomentCard>
+    with SingleTickerProviderStateMixin {
   bool _showBack = false;
+  bool _showDelete = false;
+  Timer? _pendingTimer;
+  late final AnimationController _nudge = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  );
+
+  bool get _ready => widget.moment.hasAiComment;
+  bool get _waitingTooLong =>
+      DateTime.now().difference(widget.moment.createdAt) >=
+      const Duration(minutes: 2);
+
+  @override
+  void initState() {
+    super.initState();
+    _watchPending();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _animateReady();
+  }
+
+  void _animateReady() {
+    _nudge.stop();
+    _nudge.value = 0;
+    if (_ready && !MediaQuery.disableAnimationsOf(context)) {
+      // A short invitation, rather than a permanently moving feed.
+      _nudge.repeat(count: 3);
+    }
+  }
+
+  void _watchPending() {
+    _pendingTimer?.cancel();
+    if (!_ready && !_waitingTooLong) {
+      final remaining =
+          const Duration(minutes: 2) -
+          DateTime.now().difference(widget.moment.createdAt);
+      _pendingTimer = Timer(remaining, () {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pendingTimer?.cancel();
+    _nudge.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant _FlipMomentCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.moment.stableKey != widget.moment.stableKey) {
       _showBack = false;
+      _showDelete = false;
+    }
+    if (!_ready) _showBack = false;
+    if (oldWidget.moment.stableKey != widget.moment.stableKey ||
+        oldWidget.moment.hasAiComment != _ready) {
+      _watchPending();
+      _animateReady();
     }
   }
 
   void _toggleSide() {
+    if (!_ready || _showDelete) return;
     setState(() => _showBack = !_showBack);
   }
 
+  Widget _buildCorner(bool showingBack) => Positioned(
+    top: 0,
+    right: 0,
+    child: Semantics(
+      label: _ready
+          ? (showingBack ? '翻回心笺正面' : '回响已就绪，点击翻转')
+          : (_waitingTooLong ? '回响尚未就绪，可下拉刷新' : '回响生成中，暂不可翻转'),
+      button: _ready,
+      child: Tooltip(
+        message: _ready
+            ? '点击角标或双击卡片翻转'
+            : (_waitingTooLong ? '回响尚未就绪，可下拉刷新' : '回响生成中…'),
+        child: GestureDetector(
+          onTap: _ready ? _toggleSide : null,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(24),
+            ),
+            child: ClipPath(
+              clipper: const _CornerClipper(),
+              child: ColoredBox(
+                key: ValueKey(_ready ? 'echo-ready' : 'echo-pending'),
+                color: _ready
+                    ? const Color(0xFF668D75)
+                    : const Color(0xFF939A98),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Align(
+                    alignment: const Alignment(0.45, -0.45),
+                    child: AnimatedBuilder(
+                      animation: _nudge,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          -2 * math.sin(_nudge.value * math.pi * 2),
+                        ),
+                        child: child,
+                      ),
+                      child: Icon(
+                        _ready
+                            ? Icons.swap_horiz_rounded
+                            : Icons.more_horiz_rounded,
+                        size: 19,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onDoubleTap: _toggleSide,
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          Visibility(
-            visible: false,
-            maintainSize: true,
-            maintainState: true,
-            maintainAnimation: true,
-            child: _UnifiedGlassMomentCard(
-              moment: widget.moment,
-              onDelete: widget.onDelete,
+    return TapRegion(
+      onTapOutside: (_) {
+        if (_showDelete) setState(() => _showDelete = false);
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: widget.onDelete == null
+            ? null
+            : () => setState(() => _showDelete = true),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Visibility(
+              visible: false,
+              maintainSize: true,
+              maintainState: true,
+              maintainAnimation: true,
+              child: _UnifiedGlassMomentCard(
+                moment: widget.moment,
+                onDelete: widget.onDelete,
+              ),
             ),
-          ),
-          Positioned.fill(
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: _showBack ? math.pi : 0),
-              duration: const Duration(milliseconds: 460),
-              curve: Curves.easeInOutCubic,
-              builder: (context, angle, child) {
-                final showingBack = angle > math.pi / 2;
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.0012)
-                    ..rotateY(angle),
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(showingBack ? math.pi : 0),
-                    child: showingBack
-                        ? _MomentBackCard(
-                            moment: widget.moment,
-                            onDelete: widget.onDelete,
-                          )
-                        : _UnifiedGlassMomentCard(
-                            moment: widget.moment,
-                            onDelete: widget.onDelete,
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(end: _showBack ? math.pi : 0),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 460),
+                  curve: Curves.easeInOutCubic,
+                  builder: (context, angle, child) {
+                    final showingBack = angle > math.pi / 2;
+                    return Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.0012)
+                        ..rotateY(angle),
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(showingBack ? math.pi : 0),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onDoubleTap: _ready && !_showDelete
+                                  ? _toggleSide
+                                  : null,
+                              child: showingBack
+                                  ? _MomentBackCard(
+                                      moment: widget.moment,
+                                      onDelete: widget.onDelete,
+                                    )
+                                  : _UnifiedGlassMomentCard(
+                                      moment: widget.moment,
+                                      onDelete: widget.onDelete,
+                                    ),
+                            ),
+                            _buildCorner(showingBack),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            if (_showDelete)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: GestureDetector(
+                    key: const ValueKey('delete-overlay'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _showDelete = false),
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.34),
+                      child: Center(
+                        child: FilledButton.tonalIcon(
+                          onPressed: () {
+                            setState(() => _showDelete = false);
+                            widget.onDelete?.call();
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.surface.withValues(
+                              alpha: 0.95,
+                            ),
+                            foregroundColor: const Color(0xFF9B4D45),
+                            minimumSize: const Size(100, 48),
                           ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('删除心笺'),
+                        ),
+                      ),
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _CornerClipper extends CustomClipper<Path> {
+  const _CornerClipper();
+
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(0, 0)
+    ..lineTo(size.width, 0)
+    ..lineTo(size.width, size.height)
+    ..close();
+
+  @override
+  bool shouldReclip(_CornerClipper oldClipper) => false;
 }
 
 class _UnifiedGlassMomentCard extends StatelessWidget {
@@ -263,11 +451,7 @@ class _MomentBackCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      if (onDelete != null)
-                        _CardMenu(
-                          tint: AppColors.textMuted,
-                          onDelete: onDelete,
-                        ),
+                      const SizedBox(width: 30),
                     ],
                   ),
                   const SizedBox(height: 18),
@@ -388,9 +572,14 @@ class _CardHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: _HeaderTags(moment: moment)),
-        if (onDelete != null)
-          _CardMenu(tint: AppColors.textMuted, onDelete: onDelete),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: _HeaderTags(moment: moment),
+          ),
+        ),
+        const SizedBox(width: 30, height: 32),
       ],
     );
   }
@@ -449,43 +638,6 @@ class _HeaderTags extends StatelessWidget {
     );
   }
 }
-
-class _CardMenu extends StatelessWidget {
-  const _CardMenu({required this.tint, this.onDelete});
-
-  final Color tint;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<_CardAction>(
-      tooltip: '更多',
-      icon: Icon(
-        Icons.more_horiz_rounded,
-        size: 20,
-        color: tint.withValues(alpha: 0.72),
-      ),
-      color: AppColors.surface,
-      elevation: 6,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => onDelete?.call(),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: _CardAction.delete,
-          child: Text(
-            '删除',
-            style: GoogleFonts.notoSansSc(
-              fontSize: 13,
-              color: const Color(0xFF9B4D45),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-enum _CardAction { delete }
 
 class _PhotoHero extends StatelessWidget {
   const _PhotoHero({required this.paths});
@@ -553,10 +705,9 @@ class _PhotoTile extends StatelessWidget {
 
   Widget _imageFor(String path, {required int cacheWidth}) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
+      return PrivateJournalImage(
+        url: path,
         fit: BoxFit.cover,
-        alignment: Alignment.center,
         cacheWidth: cacheWidth,
       );
     }
@@ -589,7 +740,7 @@ void _openImagePreview(
               final path = paths[index];
               final image =
                   path.startsWith('http://') || path.startsWith('https://')
-                  ? Image.network(path)
+                  ? PrivateJournalImage(url: path, fit: BoxFit.contain)
                   : Image.file(File(path));
               return InteractiveViewer(
                 minScale: 0.8,

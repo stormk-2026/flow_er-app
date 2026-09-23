@@ -1,5 +1,6 @@
 # Miscellaneous
 /backend/
+/SECURITY_ROLLOUT_PENDING.md
 # Backend source is maintained in a separate private repository.
 .env
 .env.*

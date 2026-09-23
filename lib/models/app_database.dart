@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -10,6 +11,9 @@ part 'app_database.g.dart';
 // Drift 的 Table 定义 ≈ Android Room 的 @Entity
 // 每个字段对应数据库的一列，类型由 Dart 类型推断
 class FlowIntents extends Table {
+  TextColumn get clientId => text().withDefault(const Constant(''))();
+  BoolColumn get pendingDelete =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get serverId => text().nullable()(); // 后端 UUID
   TextColumn get title => text()();
@@ -26,6 +30,8 @@ class FlowIntents extends Table {
 }
 
 class FocusSessions extends Table {
+  TextColumn get clientId => text().withDefault(const Constant(''))();
+  BoolColumn get syncDirty => boolean().withDefault(const Constant(true))();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get serverId => text().nullable()();
   DateTimeColumn get startedAt => dateTime()();
@@ -40,10 +46,11 @@ class FocusSessions extends Table {
 // @DriftDatabase ≈ @Database in Room — 声明数据库包含哪些表
 @DriftDatabase(tables: [FlowIntents, FocusSessions])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase({String account = 'guest'}) : super(_openConnection(account));
+  AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,14 +70,24 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         await migrator.addColumn(flowIntents, flowIntents.aiComment);
       }
+      if (from < 7) {
+        await migrator.addColumn(flowIntents, flowIntents.clientId);
+        await migrator.addColumn(flowIntents, flowIntents.pendingDelete);
+        await migrator.addColumn(focusSessions, focusSessions.clientId);
+        await migrator.addColumn(focusSessions, focusSessions.syncDirty);
+      }
     },
   );
 }
 
-LazyDatabase _openConnection() {
+String accountDatabaseName(String account) =>
+    'flow_er_v2_${base64Url.encode(utf8.encode(account.trim().toLowerCase())).replaceAll('=', '')}.sqlite';
+
+LazyDatabase _openConnection(String account) {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'flow_er.sqlite'));
+    // Never automatically adopt the legacy shared database: its owner is unknown.
+    final file = File(p.join(dir.path, accountDatabaseName(account)));
     return NativeDatabase.createInBackground(file);
   });
 }

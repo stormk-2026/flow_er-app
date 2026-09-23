@@ -15,11 +15,15 @@ import '../services/sync/focus_session_sync_service.dart';
 import '../services/sync/intent_sync_service.dart';
 import '../services/uploads/image_upload_service.dart';
 import 'settings_provider.dart';
+import 'auth_provider.dart';
 
 // Provider<AppDatabase> — 同步创建，不需要 FutureProvider
 // Drift 的 LazyDatabase 内部自己处理异步初始化
 final databaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
+  final account =
+      ref.watch(authProvider.select((value) => value.valueOrNull?.email)) ??
+      'guest';
+  final db = AppDatabase(account: account);
   ref.onDispose(db.close); // ref.onDispose ≈ ViewModel.onCleared()
   return db;
 });
@@ -29,7 +33,12 @@ final intentRepositoryProvider = Provider<IntentRepository>((ref) {
 });
 
 final intentSyncServiceProvider = Provider<IntentSyncService>((ref) {
-  return IntentSyncService(ref.watch(intentRepositoryProvider));
+  return IntentSyncService(
+    ref.watch(intentRepositoryProvider),
+    account: ref.watch(
+      authProvider.select((value) => value.valueOrNull?.email),
+    ),
+  );
 });
 
 final focusSessionRepositoryProvider = Provider<FocusSessionRepository>((ref) {
@@ -39,7 +48,12 @@ final focusSessionRepositoryProvider = Provider<FocusSessionRepository>((ref) {
 final focusSessionSyncServiceProvider = Provider<FocusSessionSyncService>((
   ref,
 ) {
-  return FocusSessionSyncService(ref.watch(focusSessionRepositoryProvider));
+  return FocusSessionSyncService(
+    ref.watch(focusSessionRepositoryProvider),
+    account: ref.watch(
+      authProvider.select((value) => value.valueOrNull?.email),
+    ),
+  );
 });
 
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
@@ -54,11 +68,13 @@ final appAudioServiceProvider = Provider<AppAudioService>((ref) {
 
 final analyticsStatsProvider =
     FutureProvider.family<AnalyticsStats, AnalyticsPeriod>((ref, period) {
+      ref.watch(authProvider.select((value) => value.valueOrNull?.email));
       return ref.watch(analyticsServiceProvider).fetchStats(period);
     });
 
 final analyticsPortraitProvider =
     FutureProvider.family<AnalyticsPortrait, AnalyticsPeriod>((ref, period) {
+      ref.watch(authProvider.select((value) => value.valueOrNull?.email));
       return ref.watch(analyticsServiceProvider).fetchPortrait(period);
     });
 
@@ -95,6 +111,10 @@ final intentsProvider = StreamProvider<List<FlowIntent>>((ref) {
   return ref.watch(intentRepositoryProvider).watchAll();
 });
 
+final pendingIntentCountProvider = StreamProvider<int>(
+  (ref) => ref.watch(intentRepositoryProvider).watchPendingCount(),
+);
+
 /// 心笺列表：冥想页提交 → 本地库 → 此处监听并转成随机样式卡片。
 final inspirationMomentsProvider =
     Provider<AsyncValue<List<InspirationMoment>>>((ref) {
@@ -116,24 +136,21 @@ class IntentController extends AsyncNotifier<void> {
     required String body,
     List<String> imagePaths = const [],
   }) async {
+    final repository = ref.read(intentRepositoryProvider);
+    final syncService = ref.read(intentSyncServiceProvider);
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final attachments = imagePaths.isEmpty
-          ? const <String>[]
-          : await ref.read(imageUploadServiceProvider).uploadImages(imagePaths);
-      final intent = await ref
-          .read(intentRepositoryProvider)
-          .saveJournal(
-            mode: mode,
-            quickText: quickText,
-            title: title,
-            body: body,
-            imagePaths: attachments,
-          );
+      final attachments = imagePaths;
+      final intent = await repository.saveJournal(
+        mode: mode,
+        quickText: quickText,
+        title: title,
+        body: body,
+        imagePaths: attachments,
+      );
       if (intent != null) {
-        final syncService = ref.read(intentSyncServiceProvider);
-        await syncService.pushIntent(intent);
-        unawaited(_refreshGeneratedComment(syncService));
+        // Local persistence completes independently of cloud/AI latency.
+        unawaited(_pushAndRefresh(syncService, intent));
         await ref
             .read(appAudioServiceProvider)
             .setEnabled(ref.read(settingsProvider).soundEnabled);
@@ -144,9 +161,10 @@ class IntentController extends AsyncNotifier<void> {
   }
 
   Future<void> deleteJournal(FlowIntent intent) async {
+    final service = ref.read(intentSyncServiceProvider);
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await ref.read(intentSyncServiceProvider).deleteIntent(intent);
+      await service.deleteIntent(intent);
       invalidateAnalyticsProviders(ref);
     });
   }
@@ -161,6 +179,18 @@ class IntentController extends AsyncNotifier<void> {
     for (final delay in delays) {
       await Future<void>.delayed(delay);
       await syncService.refreshSnapshot();
+    }
+  }
+
+  Future<void> _pushAndRefresh(
+    IntentSyncService service,
+    FlowIntent intent,
+  ) async {
+    try {
+      await service.pushIntent(intent);
+      await _refreshGeneratedComment(service);
+    } catch (_) {
+      // The local record stays available for a later sync attempt.
     }
   }
 }

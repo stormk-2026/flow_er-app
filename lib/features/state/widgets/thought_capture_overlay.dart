@@ -263,6 +263,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
   Widget _buildQuickField() {
     return TextField(
       controller: _quickController,
+      maxLength: 2000,
       autofocus: true,
       maxLines: 3,
       minLines: 1,
@@ -279,6 +280,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
       children: [
         TextField(
           controller: _titleController,
+          maxLength: 100,
           autofocus: true,
           onChanged: (_) => setState(() {}),
           decoration: _fieldDecoration('标题'),
@@ -290,6 +292,7 @@ class _ThoughtCaptureOverlayState extends ConsumerState<ThoughtCaptureOverlay>
         const SizedBox(height: 10),
         TextField(
           controller: _bodyController,
+          maxLength: 2000,
           maxLines: 6,
           minLines: 4,
           onChanged: (_) => setState(() {}),

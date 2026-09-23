@@ -9,6 +9,33 @@ class $FlowIntentsTable extends FlowIntents
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $FlowIntentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _clientIdMeta = const VerificationMeta(
+    'clientId',
+  );
+  @override
+  late final GeneratedColumn<String> clientId = GeneratedColumn<String>(
+    'client_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _pendingDeleteMeta = const VerificationMeta(
+    'pendingDelete',
+  );
+  @override
+  late final GeneratedColumn<bool> pendingDelete = GeneratedColumn<bool>(
+    'pending_delete',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pending_delete" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -150,6 +177,8 @@ class $FlowIntentsTable extends FlowIntents
   );
   @override
   List<GeneratedColumn> get $columns => [
+    clientId,
+    pendingDelete,
     id,
     serverId,
     title,
@@ -176,6 +205,21 @@ class $FlowIntentsTable extends FlowIntents
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('client_id')) {
+      context.handle(
+        _clientIdMeta,
+        clientId.isAcceptableOrUnknown(data['client_id']!, _clientIdMeta),
+      );
+    }
+    if (data.containsKey('pending_delete')) {
+      context.handle(
+        _pendingDeleteMeta,
+        pendingDelete.isAcceptableOrUnknown(
+          data['pending_delete']!,
+          _pendingDeleteMeta,
+        ),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -271,6 +315,14 @@ class $FlowIntentsTable extends FlowIntents
   FlowIntent map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FlowIntent(
+      clientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_id'],
+      )!,
+      pendingDelete: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pending_delete'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -333,6 +385,8 @@ class $FlowIntentsTable extends FlowIntents
 }
 
 class FlowIntent extends DataClass implements Insertable<FlowIntent> {
+  final String clientId;
+  final bool pendingDelete;
   final int id;
   final String? serverId;
   final String title;
@@ -347,6 +401,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   final DateTime createdAt;
   final DateTime updatedAt;
   const FlowIntent({
+    required this.clientId,
+    required this.pendingDelete,
     required this.id,
     this.serverId,
     required this.title,
@@ -364,6 +420,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['client_id'] = Variable<String>(clientId);
+    map['pending_delete'] = Variable<bool>(pendingDelete);
     map['id'] = Variable<int>(id);
     if (!nullToAbsent || serverId != null) {
       map['server_id'] = Variable<String>(serverId);
@@ -390,6 +448,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
 
   FlowIntentsCompanion toCompanion(bool nullToAbsent) {
     return FlowIntentsCompanion(
+      clientId: Value(clientId),
+      pendingDelete: Value(pendingDelete),
       id: Value(id),
       serverId: serverId == null && nullToAbsent
           ? const Value.absent()
@@ -418,6 +478,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FlowIntent(
+      clientId: serializer.fromJson<String>(json['clientId']),
+      pendingDelete: serializer.fromJson<bool>(json['pendingDelete']),
       id: serializer.fromJson<int>(json['id']),
       serverId: serializer.fromJson<String?>(json['serverId']),
       title: serializer.fromJson<String>(json['title']),
@@ -437,6 +499,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'clientId': serializer.toJson<String>(clientId),
+      'pendingDelete': serializer.toJson<bool>(pendingDelete),
       'id': serializer.toJson<int>(id),
       'serverId': serializer.toJson<String?>(serverId),
       'title': serializer.toJson<String>(title),
@@ -454,6 +518,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   }
 
   FlowIntent copyWith({
+    String? clientId,
+    bool? pendingDelete,
     int? id,
     Value<String?> serverId = const Value.absent(),
     String? title,
@@ -468,6 +534,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => FlowIntent(
+    clientId: clientId ?? this.clientId,
+    pendingDelete: pendingDelete ?? this.pendingDelete,
     id: id ?? this.id,
     serverId: serverId.present ? serverId.value : this.serverId,
     title: title ?? this.title,
@@ -484,6 +552,10 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   );
   FlowIntent copyWithCompanion(FlowIntentsCompanion data) {
     return FlowIntent(
+      clientId: data.clientId.present ? data.clientId.value : this.clientId,
+      pendingDelete: data.pendingDelete.present
+          ? data.pendingDelete.value
+          : this.pendingDelete,
       id: data.id.present ? data.id.value : this.id,
       serverId: data.serverId.present ? data.serverId.value : this.serverId,
       title: data.title.present ? data.title.value : this.title,
@@ -505,6 +577,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   @override
   String toString() {
     return (StringBuffer('FlowIntent(')
+          ..write('clientId: $clientId, ')
+          ..write('pendingDelete: $pendingDelete, ')
           ..write('id: $id, ')
           ..write('serverId: $serverId, ')
           ..write('title: $title, ')
@@ -524,6 +598,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
 
   @override
   int get hashCode => Object.hash(
+    clientId,
+    pendingDelete,
     id,
     serverId,
     title,
@@ -542,6 +618,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is FlowIntent &&
+          other.clientId == this.clientId &&
+          other.pendingDelete == this.pendingDelete &&
           other.id == this.id &&
           other.serverId == this.serverId &&
           other.title == this.title &&
@@ -558,6 +636,8 @@ class FlowIntent extends DataClass implements Insertable<FlowIntent> {
 }
 
 class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
+  final Value<String> clientId;
+  final Value<bool> pendingDelete;
   final Value<int> id;
   final Value<String?> serverId;
   final Value<String> title;
@@ -572,6 +652,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const FlowIntentsCompanion({
+    this.clientId = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
     this.title = const Value.absent(),
@@ -587,6 +669,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     this.updatedAt = const Value.absent(),
   });
   FlowIntentsCompanion.insert({
+    this.clientId = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
     required String title,
@@ -605,6 +689,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<FlowIntent> custom({
+    Expression<String>? clientId,
+    Expression<bool>? pendingDelete,
     Expression<int>? id,
     Expression<String>? serverId,
     Expression<String>? title,
@@ -620,6 +706,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
+      if (clientId != null) 'client_id': clientId,
+      if (pendingDelete != null) 'pending_delete': pendingDelete,
       if (id != null) 'id': id,
       if (serverId != null) 'server_id': serverId,
       if (title != null) 'title': title,
@@ -637,6 +725,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
   }
 
   FlowIntentsCompanion copyWith({
+    Value<String>? clientId,
+    Value<bool>? pendingDelete,
     Value<int>? id,
     Value<String?>? serverId,
     Value<String>? title,
@@ -652,6 +742,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
     Value<DateTime>? updatedAt,
   }) {
     return FlowIntentsCompanion(
+      clientId: clientId ?? this.clientId,
+      pendingDelete: pendingDelete ?? this.pendingDelete,
       id: id ?? this.id,
       serverId: serverId ?? this.serverId,
       title: title ?? this.title,
@@ -671,6 +763,12 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (clientId.present) {
+      map['client_id'] = Variable<String>(clientId.value);
+    }
+    if (pendingDelete.present) {
+      map['pending_delete'] = Variable<bool>(pendingDelete.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -716,6 +814,8 @@ class FlowIntentsCompanion extends UpdateCompanion<FlowIntent> {
   @override
   String toString() {
     return (StringBuffer('FlowIntentsCompanion(')
+          ..write('clientId: $clientId, ')
+          ..write('pendingDelete: $pendingDelete, ')
           ..write('id: $id, ')
           ..write('serverId: $serverId, ')
           ..write('title: $title, ')
@@ -740,6 +840,33 @@ class $FocusSessionsTable extends FocusSessions
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $FocusSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _clientIdMeta = const VerificationMeta(
+    'clientId',
+  );
+  @override
+  late final GeneratedColumn<String> clientId = GeneratedColumn<String>(
+    'client_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _syncDirtyMeta = const VerificationMeta(
+    'syncDirty',
+  );
+  @override
+  late final GeneratedColumn<bool> syncDirty = GeneratedColumn<bool>(
+    'sync_dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sync_dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -839,6 +966,8 @@ class $FocusSessionsTable extends FocusSessions
   );
   @override
   List<GeneratedColumn> get $columns => [
+    clientId,
+    syncDirty,
     id,
     serverId,
     startedAt,
@@ -860,6 +989,18 @@ class $FocusSessionsTable extends FocusSessions
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('client_id')) {
+      context.handle(
+        _clientIdMeta,
+        clientId.isAcceptableOrUnknown(data['client_id']!, _clientIdMeta),
+      );
+    }
+    if (data.containsKey('sync_dirty')) {
+      context.handle(
+        _syncDirtyMeta,
+        syncDirty.isAcceptableOrUnknown(data['sync_dirty']!, _syncDirtyMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -933,6 +1074,14 @@ class $FocusSessionsTable extends FocusSessions
   FocusSession map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FocusSession(
+      clientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_id'],
+      )!,
+      syncDirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sync_dirty'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -975,6 +1124,8 @@ class $FocusSessionsTable extends FocusSessions
 }
 
 class FocusSession extends DataClass implements Insertable<FocusSession> {
+  final String clientId;
+  final bool syncDirty;
   final int id;
   final String? serverId;
   final DateTime startedAt;
@@ -984,6 +1135,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   final bool isFailed;
   final bool excludedFromStats;
   const FocusSession({
+    required this.clientId,
+    required this.syncDirty,
     required this.id,
     this.serverId,
     required this.startedAt,
@@ -996,6 +1149,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['client_id'] = Variable<String>(clientId);
+    map['sync_dirty'] = Variable<bool>(syncDirty);
     map['id'] = Variable<int>(id);
     if (!nullToAbsent || serverId != null) {
       map['server_id'] = Variable<String>(serverId);
@@ -1011,6 +1166,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
 
   FocusSessionsCompanion toCompanion(bool nullToAbsent) {
     return FocusSessionsCompanion(
+      clientId: Value(clientId),
+      syncDirty: Value(syncDirty),
       id: Value(id),
       serverId: serverId == null && nullToAbsent
           ? const Value.absent()
@@ -1030,6 +1187,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FocusSession(
+      clientId: serializer.fromJson<String>(json['clientId']),
+      syncDirty: serializer.fromJson<bool>(json['syncDirty']),
       id: serializer.fromJson<int>(json['id']),
       serverId: serializer.fromJson<String?>(json['serverId']),
       startedAt: serializer.fromJson<DateTime>(json['startedAt']),
@@ -1044,6 +1203,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'clientId': serializer.toJson<String>(clientId),
+      'syncDirty': serializer.toJson<bool>(syncDirty),
       'id': serializer.toJson<int>(id),
       'serverId': serializer.toJson<String?>(serverId),
       'startedAt': serializer.toJson<DateTime>(startedAt),
@@ -1056,6 +1217,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   }
 
   FocusSession copyWith({
+    String? clientId,
+    bool? syncDirty,
     int? id,
     Value<String?> serverId = const Value.absent(),
     DateTime? startedAt,
@@ -1065,6 +1228,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
     bool? isFailed,
     bool? excludedFromStats,
   }) => FocusSession(
+    clientId: clientId ?? this.clientId,
+    syncDirty: syncDirty ?? this.syncDirty,
     id: id ?? this.id,
     serverId: serverId.present ? serverId.value : this.serverId,
     startedAt: startedAt ?? this.startedAt,
@@ -1076,6 +1241,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   );
   FocusSession copyWithCompanion(FocusSessionsCompanion data) {
     return FocusSession(
+      clientId: data.clientId.present ? data.clientId.value : this.clientId,
+      syncDirty: data.syncDirty.present ? data.syncDirty.value : this.syncDirty,
       id: data.id.present ? data.id.value : this.id,
       serverId: data.serverId.present ? data.serverId.value : this.serverId,
       startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
@@ -1096,6 +1263,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   @override
   String toString() {
     return (StringBuffer('FocusSession(')
+          ..write('clientId: $clientId, ')
+          ..write('syncDirty: $syncDirty, ')
           ..write('id: $id, ')
           ..write('serverId: $serverId, ')
           ..write('startedAt: $startedAt, ')
@@ -1110,6 +1279,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
 
   @override
   int get hashCode => Object.hash(
+    clientId,
+    syncDirty,
     id,
     serverId,
     startedAt,
@@ -1123,6 +1294,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is FocusSession &&
+          other.clientId == this.clientId &&
+          other.syncDirty == this.syncDirty &&
           other.id == this.id &&
           other.serverId == this.serverId &&
           other.startedAt == this.startedAt &&
@@ -1134,6 +1307,8 @@ class FocusSession extends DataClass implements Insertable<FocusSession> {
 }
 
 class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
+  final Value<String> clientId;
+  final Value<bool> syncDirty;
   final Value<int> id;
   final Value<String?> serverId;
   final Value<DateTime> startedAt;
@@ -1143,6 +1318,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
   final Value<bool> isFailed;
   final Value<bool> excludedFromStats;
   const FocusSessionsCompanion({
+    this.clientId = const Value.absent(),
+    this.syncDirty = const Value.absent(),
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
     this.startedAt = const Value.absent(),
@@ -1153,6 +1330,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     this.excludedFromStats = const Value.absent(),
   });
   FocusSessionsCompanion.insert({
+    this.clientId = const Value.absent(),
+    this.syncDirty = const Value.absent(),
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
     required DateTime startedAt,
@@ -1167,6 +1346,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
        triggerType = Value(triggerType),
        isFailed = Value(isFailed);
   static Insertable<FocusSession> custom({
+    Expression<String>? clientId,
+    Expression<bool>? syncDirty,
     Expression<int>? id,
     Expression<String>? serverId,
     Expression<DateTime>? startedAt,
@@ -1177,6 +1358,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     Expression<bool>? excludedFromStats,
   }) {
     return RawValuesInsertable({
+      if (clientId != null) 'client_id': clientId,
+      if (syncDirty != null) 'sync_dirty': syncDirty,
       if (id != null) 'id': id,
       if (serverId != null) 'server_id': serverId,
       if (startedAt != null) 'started_at': startedAt,
@@ -1189,6 +1372,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
   }
 
   FocusSessionsCompanion copyWith({
+    Value<String>? clientId,
+    Value<bool>? syncDirty,
     Value<int>? id,
     Value<String?>? serverId,
     Value<DateTime>? startedAt,
@@ -1199,6 +1384,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
     Value<bool>? excludedFromStats,
   }) {
     return FocusSessionsCompanion(
+      clientId: clientId ?? this.clientId,
+      syncDirty: syncDirty ?? this.syncDirty,
       id: id ?? this.id,
       serverId: serverId ?? this.serverId,
       startedAt: startedAt ?? this.startedAt,
@@ -1213,6 +1400,12 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (clientId.present) {
+      map['client_id'] = Variable<String>(clientId.value);
+    }
+    if (syncDirty.present) {
+      map['sync_dirty'] = Variable<bool>(syncDirty.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -1243,6 +1436,8 @@ class FocusSessionsCompanion extends UpdateCompanion<FocusSession> {
   @override
   String toString() {
     return (StringBuffer('FocusSessionsCompanion(')
+          ..write('clientId: $clientId, ')
+          ..write('syncDirty: $syncDirty, ')
           ..write('id: $id, ')
           ..write('serverId: $serverId, ')
           ..write('startedAt: $startedAt, ')
@@ -1273,6 +1468,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$FlowIntentsTableCreateCompanionBuilder =
     FlowIntentsCompanion Function({
+      Value<String> clientId,
+      Value<bool> pendingDelete,
       Value<int> id,
       Value<String?> serverId,
       required String title,
@@ -1289,6 +1486,8 @@ typedef $$FlowIntentsTableCreateCompanionBuilder =
     });
 typedef $$FlowIntentsTableUpdateCompanionBuilder =
     FlowIntentsCompanion Function({
+      Value<String> clientId,
+      Value<bool> pendingDelete,
       Value<int> id,
       Value<String?> serverId,
       Value<String> title,
@@ -1313,6 +1512,16 @@ class $$FlowIntentsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -1388,6 +1597,16 @@ class $$FlowIntentsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -1463,6 +1682,14 @@ class $$FlowIntentsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get clientId =>
+      $composableBuilder(column: $table.clientId, builder: (column) => column);
+
+  GeneratedColumn<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -1536,6 +1763,8 @@ class $$FlowIntentsTableTableManager
               $$FlowIntentsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> clientId = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String?> serverId = const Value.absent(),
                 Value<String> title = const Value.absent(),
@@ -1550,6 +1779,8 @@ class $$FlowIntentsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => FlowIntentsCompanion(
+                clientId: clientId,
+                pendingDelete: pendingDelete,
                 id: id,
                 serverId: serverId,
                 title: title,
@@ -1566,6 +1797,8 @@ class $$FlowIntentsTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String> clientId = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String?> serverId = const Value.absent(),
                 required String title,
@@ -1580,6 +1813,8 @@ class $$FlowIntentsTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => FlowIntentsCompanion.insert(
+                clientId: clientId,
+                pendingDelete: pendingDelete,
                 id: id,
                 serverId: serverId,
                 title: title,
@@ -1621,6 +1856,8 @@ typedef $$FlowIntentsTableProcessedTableManager =
     >;
 typedef $$FocusSessionsTableCreateCompanionBuilder =
     FocusSessionsCompanion Function({
+      Value<String> clientId,
+      Value<bool> syncDirty,
       Value<int> id,
       Value<String?> serverId,
       required DateTime startedAt,
@@ -1632,6 +1869,8 @@ typedef $$FocusSessionsTableCreateCompanionBuilder =
     });
 typedef $$FocusSessionsTableUpdateCompanionBuilder =
     FocusSessionsCompanion Function({
+      Value<String> clientId,
+      Value<bool> syncDirty,
       Value<int> id,
       Value<String?> serverId,
       Value<DateTime> startedAt,
@@ -1651,6 +1890,16 @@ class $$FocusSessionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get syncDirty => $composableBuilder(
+    column: $table.syncDirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -1701,6 +1950,16 @@ class $$FocusSessionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get syncDirty => $composableBuilder(
+    column: $table.syncDirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -1751,6 +2010,12 @@ class $$FocusSessionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get clientId =>
+      $composableBuilder(column: $table.clientId, builder: (column) => column);
+
+  GeneratedColumn<bool> get syncDirty =>
+      $composableBuilder(column: $table.syncDirty, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -1813,6 +2078,8 @@ class $$FocusSessionsTableTableManager
               $$FocusSessionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> clientId = const Value.absent(),
+                Value<bool> syncDirty = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String?> serverId = const Value.absent(),
                 Value<DateTime> startedAt = const Value.absent(),
@@ -1822,6 +2089,8 @@ class $$FocusSessionsTableTableManager
                 Value<bool> isFailed = const Value.absent(),
                 Value<bool> excludedFromStats = const Value.absent(),
               }) => FocusSessionsCompanion(
+                clientId: clientId,
+                syncDirty: syncDirty,
                 id: id,
                 serverId: serverId,
                 startedAt: startedAt,
@@ -1833,6 +2102,8 @@ class $$FocusSessionsTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String> clientId = const Value.absent(),
+                Value<bool> syncDirty = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String?> serverId = const Value.absent(),
                 required DateTime startedAt,
@@ -1842,6 +2113,8 @@ class $$FocusSessionsTableTableManager
                 required bool isFailed,
                 Value<bool> excludedFromStats = const Value.absent(),
               }) => FocusSessionsCompanion.insert(
+                clientId: clientId,
+                syncDirty: syncDirty,
                 id: id,
                 serverId: serverId,
                 startedAt: startedAt,

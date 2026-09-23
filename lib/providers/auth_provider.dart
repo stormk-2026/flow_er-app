@@ -26,11 +26,15 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     final prefs = await SharedPreferences.getInstance();
     final cachedEmail = prefs.getString(_cachedEmailKey);
     final cachedNickname = prefs.getString(_cachedNicknameKey);
-    if (cachedEmail != null && cachedNickname != null) {
+    final boundAccount = await ApiClient.instance.storedAccount();
+    if (cachedEmail != null &&
+        cachedNickname != null &&
+        cachedEmail.toLowerCase() == boundAccount) {
       // 异步验证 token，失效才清除
       _repo
           .me()
           .then((profile) async {
+            if (await ApiClient.instance.getToken() != token) return;
             if (profile == null) {
               await ApiClient.instance.clearToken();
               await _clearCache();
@@ -60,8 +64,13 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<VerifyResult> verifyCode({
     required String email,
     required String code,
+    bool enableAi = false,
   }) async {
-    final result = await _repo.verifyCode(email: email, code: code);
+    final result = await _repo.verifyCode(
+      email: email,
+      code: code,
+      enableAi: enableAi,
+    );
     if (!result.isNewUser) {
       await _saveCache(email: result.email, nickname: result.nickname);
       state = AsyncData(
@@ -85,6 +94,12 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 
   Future<void> logout() async {
     await _repo.logout();
+    await _clearCache();
+    state = const AsyncData(null);
+  }
+
+  Future<void> accountDeleted() async {
+    await ApiClient.instance.clearToken();
     await _clearCache();
     state = const AsyncData(null);
   }

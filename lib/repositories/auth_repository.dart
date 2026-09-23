@@ -3,9 +3,10 @@ import 'package:dio/dio.dart';
 import '../services/api/api_client.dart';
 
 class AuthRepository {
-  const AuthRepository();
+  const AuthRepository({Dio? dio}) : _client = dio;
 
-  Dio get _dio => ApiClient.instance.dio;
+  final Dio? _client;
+  Dio get _dio => _client ?? ApiClient.instance.dio;
 
   /// 发送邮箱验证码。返回错误信息，null 表示成功。
   Future<String?> sendCode(String email) async {
@@ -21,6 +22,7 @@ class AuthRepository {
   Future<VerifyResult> verifyCode({
     required String email,
     required String code,
+    bool enableAi = false,
   }) async {
     final resp = await _dio.post<Map<String, dynamic>>(
       '/api/v1/auth/verify-code',
@@ -28,12 +30,35 @@ class AuthRepository {
     );
     final data = resp.data!;
     final token = data['token'] as String;
-    await ApiClient.instance.saveToken(token);
+    var aiConsentSaveFailed = false;
+    // Apply an explicit opt-in to the verified account before exposing its
+    // session to background sync. An unchecked box preserves existing consent.
+    if (enableAi && data['user']['ai_consent'] != true) {
+      try {
+        await _dio.put<void>(
+          '/api/v1/auth/ai-consent',
+          data: {'enabled': true},
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+            extra: {'fixedToken': token},
+          ),
+        );
+      } on DioException {
+        // The OTP has already been consumed. Keep login usable, but report that
+        // consent was not confirmed; never pretend AI was successfully enabled.
+        aiConsentSaveFailed = true;
+      }
+    }
+    await ApiClient.instance.saveToken(
+      token,
+      account: data['user']['email'] as String,
+    );
     return VerifyResult(
       token: token,
       isNewUser: data['is_new_user'] as bool? ?? false,
       nickname: data['user']?['nickname'] as String? ?? '',
       email: data['user']['email'] as String,
+      aiConsentSaveFailed: aiConsentSaveFailed,
     );
   }
 
@@ -85,12 +110,14 @@ class VerifyResult {
     required this.isNewUser,
     required this.email,
     required this.nickname,
+    this.aiConsentSaveFailed = false,
   });
 
   final String token;
   final bool isNewUser;
   final String email;
   final String nickname;
+  final bool aiConsentSaveFailed;
 }
 
 class UserProfile {

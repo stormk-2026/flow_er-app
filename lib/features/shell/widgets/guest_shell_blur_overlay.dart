@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/greeting/home_greeting.dart';
 import '../../../core/theme/app_colors.dart';
 
-/// 未登录时盖住主内容与底栏。中央文案可点击触发登录。
+/// 未登录时覆盖整个屏幕；玻璃不受安全区裁切，登录入口保留安全边距。
 class GuestShellBlurOverlay extends StatelessWidget {
   const GuestShellBlurOverlay({super.key, required this.onLoginTap});
 
@@ -25,53 +25,59 @@ class GuestShellBlurOverlay extends StatelessWidget {
             child: ClipRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  color: Colors.white.withValues(alpha: 0.28),
+                child: ColoredBox(
+                  key: const ValueKey('guest-glass-surface'),
+                  color: AppColors.guestGlassSurface,
                 ),
               ),
             ),
           ),
           // 中央文案——透出点击，引导登录
-          Center(
-            child: GestureDetector(
-              onTap: onLoginTap,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      invite,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.notoSansSc(
-                        fontSize: 15,
-                        height: 1.7,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: AppColors.textMuted.withValues(alpha: 0.35),
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '轻触，入静',
+          SafeArea(
+            child: Center(
+              child: GestureDetector(
+                onTap: onLoginTap,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 24,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        invite,
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.notoSansSc(
-                          fontSize: 12,
-                          letterSpacing: 2,
-                          color: AppColors.textMuted,
+                          fontSize: 15,
+                          height: 1.7,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppColors.textMuted.withValues(alpha: 0.35),
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '轻触，入静',
+                          style: GoogleFonts.notoSansSc(
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

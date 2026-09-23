@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/glass_dialog.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -46,40 +46,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 
   Future<void> _showLogoutDialog(BuildContext context, String nickname) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGlassDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          '退出登录',
-          style: GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
-        ),
-        content: Text(
-          '是否退出当前账号（$nickname）？',
-          style: GoogleFonts.notoSansSc(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('取消', style: GoogleFonts.notoSansSc()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              '退出',
-              style: GoogleFonts.notoSansSc(color: const Color(0xFF516356)),
-            ),
-          ),
-        ],
-      ),
+      title: '退出登录',
+      message: '是否退出当前账号（$nickname）？',
+      confirmLabel: '退出登录',
+      icon: Icons.logout_rounded,
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       ref.read(authProvider.notifier).logout();
     }
   }
@@ -121,10 +96,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Column(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            SafeArea(
+              top: !_shellHidden,
+              bottom: !_shellHidden,
+              left: !_shellHidden,
+              right: !_shellHidden,
+              child: Column(
                 children: [
                   AnimatedSize(
                     duration: const Duration(milliseconds: 500),
@@ -168,6 +148,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             if (isLoggedIn)
                               InspirationFlowPage(
                                 key: ValueKey('inspiration-$themeKey'),
+                                isActive:
+                                    _current == MainTab.inspiration &&
+                                    !_shellHidden,
                               )
                             else
                               const SizedBox.shrink(),
@@ -211,17 +194,16 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             ),
                           ),
                         ),
-                        if (!isLoggedIn)
-                          GuestShellBlurOverlay(
-                            onLoginTap: () => _onIdentityTap(context),
-                          ),
                       ],
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            // The glass covers the viewport, not just the page's safe area.
+            if (!isLoggedIn)
+              GuestShellBlurOverlay(onLoginTap: () => _onIdentityTap(context)),
+          ],
         ),
       ),
     );
@@ -267,7 +249,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   Future<void> _syncOnLogin() async {
     await ref.read(intentSyncServiceProvider).syncOnLogin();
-    await ref.read(focusSessionSyncServiceProvider).pushPending();
+    await ref.read(focusSessionSyncServiceProvider).syncOnLogin();
     if (!mounted) return;
     invalidateAnalyticsWidgetProviders(ref);
   }

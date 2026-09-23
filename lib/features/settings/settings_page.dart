@@ -4,10 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/focus/time_rewind_copy.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/glass_dialog.dart';
 import '../../core/theme/day_night_theme.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/time_rewind_provider.dart';
+import 'privacy_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -91,6 +93,14 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
+          const SizedBox(height: 24),
+          ListTile(
+            title: const Text('隐私与数据'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const PrivacyPage()),
+            ),
+          ),
         ],
       ),
     );
@@ -267,37 +277,12 @@ class _TimeRewindTile extends ConsumerWidget {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGlassDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          TimeRewindCopy.title,
-          style: GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
-        ),
-        content: Text(
-          TimeRewindCopy.confirmMessage(count),
-          style: GoogleFonts.notoSansSc(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            height: 1.6,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('取消', style: GoogleFonts.notoSansSc()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              '回溯',
-              style: GoogleFonts.notoSansSc(color: AppColors.primaryAction),
-            ),
-          ),
-        ],
-      ),
+      title: TimeRewindCopy.title,
+      message: TimeRewindCopy.confirmMessage(count),
+      confirmLabel: '回溯',
+      icon: Icons.history_rounded,
     );
 
     if (confirmed != true || !context.mounted) return;
@@ -314,56 +299,35 @@ class _TimeRewindTile extends ConsumerWidget {
 }
 
 void _showTimeRewindHelp(BuildContext context) {
-  showDialog<void>(
+  showGlassDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-        TimeRewindCopy.title,
-        style: GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              TimeRewindCopy.intro,
-              style: GoogleFonts.notoSansSc(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.65,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.primaryAction.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                TimeRewindCopy.zenLine,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.notoSansSc(
-                  fontSize: 13,
-                  height: 1.7,
-                  color: AppColors.primaryAction,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
+    title: TimeRewindCopy.title,
+    message: TimeRewindCopy.intro,
+    icon: Icons.history_rounded,
+    confirmLabel: '知道了',
+    cancelLabel: null,
+    content: Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryAction.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primaryAction.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Text(
+          TimeRewindCopy.zenLine,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.notoSerifSc(
+            fontSize: 13,
+            height: 1.8,
+            color: AppColors.primaryAction,
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: Text('知道了', style: GoogleFonts.notoSansSc()),
-        ),
-      ],
     ),
   );
 }

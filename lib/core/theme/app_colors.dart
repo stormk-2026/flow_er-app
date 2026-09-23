@@ -29,6 +29,8 @@ abstract final class AppColors {
       _night ? const Color(0xFF9FB3A4) : const Color(0xFF516356);
   static Color get glassSurface =>
       _night ? const Color(0xFF1A1D19).withValues(alpha: 0.68) : surface;
+  static Color get guestGlassSurface =>
+      surface.withValues(alpha: _night ? 0.55 : 0.28);
   static Color get glassBorder => _night
       ? Colors.white.withValues(alpha: 0.1)
       : Colors.white.withValues(alpha: 0.55);
