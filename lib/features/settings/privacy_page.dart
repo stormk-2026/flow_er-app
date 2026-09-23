@@ -1,28 +1,63 @@
 import 'package:flow_er/core/i18n/ui_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/glass_dialog.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/app_providers.dart';
 import '../../services/api/api_client.dart';
 
-const privacyText = '''流境隐私说明（2026-09-23）
+final _publicPrivacyPolicyUrl = Uri.parse(
+  'https://sites.google.com/view/flow-er-privacy-policy/',
+);
 
-我们使用邮箱和验证码建立账号，保存昵称、心笺文字、图片与专注记录，以提供跨设备同步和统计。手机保留按账号隔离的本地缓存；云端数据由阿里云基础设施承载。旧版共享数据库不会自动归入新账号，也不会自动上传。
+class _PublicPrivacyPolicyLink extends StatelessWidget {
+  const _PublicPrivacyPolicyLink();
 
-登录或注册前，需要主动勾选同意本说明及《AI 回响功能说明》。邮箱验证成功后，流境为该账号开启 AI 回响：将心笺文字、有限的相关历史文字或专注聚合数据发送给第三方大语言模型服务提供方 Moonshot AI（月之暗面），用于分类、回响和简短总结，不发送心笺图片。未勾选不会发送登录验证码，也不会据此开启 AI。
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: TextButton.icon(
+      onPressed: () async {
+        final opened = await launchUrl(
+          _publicPrivacyPolicyUrl,
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                UiText.english ? 'Could not open privacy policy' : '无法打开隐私政策网页',
+              ),
+            ),
+          );
+        }
+      },
+      icon: const Icon(Icons.open_in_new, size: 18),
+      label: Text(UiText.english ? 'Public privacy policy' : '查看公开版隐私政策（英文）'),
+    ),
+  );
+}
 
-你可以在「设置 → 隐私与数据」撤回 AI 授权。撤回后停止后续 AI 处理，仍保留记录、云同步和数字统计；已发送的数据无法通过撤回授权收回。再次登录时重新勾选并完成验证，会重新授权 AI 处理。
+const privacyText = '''流境隐私说明
+更新日期：2026-09-23
 
-AI 输出可能不准确，不是心理诊断或医疗建议。请不要填写不必要的敏感信息或他人的隐私。
+本说明适用于流境（Flow-er）应用。隐私与数据问题请联系：gg5605568@gmail.com。
 
-删除心笺后，各设备在同步成功后移除内容；离线删除会暂存在本地等待同步。注销账号须再次验证邮箱，注销后账号及关联记录从业务数据库删除。备份及图片清理的最终期限将随正式发布的保留策略一并说明；本说明仍属于内测版本，未声明第三方服务的训练或保留政策。
+我们处理哪些数据、用于什么：你提供的邮箱用于发送验证码、建立和保护账号；昵称用于显示。你主动记录的心笺文字、所选图片及专注记录用于展示、跨设备同步和统计。设备上保留按账号隔离的新版本地缓存；旧版共享数据库不会自动归入新账号，也不会自动上传。
 
-旧版共享文件会保留在原设备用于人工核对，不会因切换账号而自动删除。
+数据存放与第三方处理：云端业务数据及图片由中国境内的阿里云基础设施承载，验证码邮件通过邮件服务发送。来自其他国家或地区的数据因此可能传输至中国。登录或注册前须主动勾选本说明及《AI 回响功能说明》；邮箱验证成功后，我们才会把心笺文字、有限的相关历史文字或专注聚合数据发送给 Moonshot AI（月之暗面），用于分类、回响和简短总结。心笺图片不会发送给模型。你的心笺不会因此公开给其他用户。
 
-隐私与数据问题联系邮箱：gg5605568@gmail.com''';
+你的选择：可以在「设置 → 隐私与数据」撤回 AI 授权，停止后续向模型发送内容；记录、云同步及数字统计仍可保留。已发送给第三方的数据无法通过撤回授权收回。再次登录并主动同意后才会重新授权。AI 输出可能不准确，不是心理诊断或医疗建议；请勿输入不必要的敏感信息或他人的隐私。
 
-const aiDisclosureText = '''AI 回响功能说明（2026-09-23）
+留存与删除：账号使用期间保留提供服务所需的业务数据。删除单条心笺后，业务记录中的正文和图片引用会清除，删除标记用于跨设备同步；离线设备将在重新联网并同步后移除对应内容。已上传图片由后台异步清理，失败时会重试，可能不会立即消失。注销账号需再次验证邮箱；注销后业务数据库中的账号及关联心笺、专注记录被删除，当前账号的新版本地缓存也会清理。旧版共享文件仍保留在原设备供你人工核对，不会因切换账号或注销而自动删除。
+
+我们自行保留的数据库备份按 7 天期限轮换，并通过定时任务清理；删除操作后的备份副本可能保留至该次轮换完成。已发送给第三方模型的数据依其适用规则处理，我们不承诺能够替第三方立即删除，也不作未经核实的训练用途承诺。如图片清理失败或你希望了解、核对、请求处理剩余数据，请通过上述邮箱联系我们。
+
+如数据处理方式发生重要变化，我们会更新本说明，并在适当情况下再次征求你的同意。''';
+
+const aiDisclosureText = '''AI 回响功能说明
+更新日期：2026-09-23
 
 流境使用第三方大语言模型（LLM）服务生成心笺分类、卡片背面的回响及简短总结。这是把内容交给第三方 AI 处理，不是公开发布给其他用户。
 
@@ -36,27 +71,29 @@ const aiDisclosureText = '''AI 回响功能说明（2026-09-23）
 
 AI 内容可能不准确，仅供自我记录与思考参考，不是心理诊断、医疗建议或事实保证。
 
-本说明仍属内测版本，第三方数据保留、删除及保护承诺尚需在正式发布前核实补齐；不作“绝不留存”或“不用于训练”的未经核实承诺。
+第三方对已收到数据的保留与处理依其适用规则进行。撤回授权只会停止后续发送，不能取回此前发送的数据；我们不作“绝不留存”或“不用于训练”的未经核实承诺。
 
 隐私与数据问题联系邮箱：gg5605568@gmail.com''';
 
-const privacyTextEn = '''Flow-er Privacy Notice (2026-09-23)
+const privacyTextEn = '''Flow-er Privacy Notice
+Last updated: September 23, 2026
 
-We use your email address and a verification code to create an account. We store your nickname, journal text, images, and focus records to provide cross-device sync and statistics. Your phone keeps a local cache separated by account. Cloud data is hosted on Alibaba Cloud infrastructure. An older shared local database is not automatically assigned to a new account or uploaded.
+This notice applies to the Flow-er app. For privacy or data questions, contact gg5605568@gmail.com.
 
-Before signing in or registering, you must actively agree to this notice and the AI Reflections Notice. After email verification, Flow-er enables AI reflections for your account. It sends journal text, limited relevant historical text, or aggregated focus data to the third-party large language model provider Moonshot AI for classification, reflections, and brief summaries. Journal images are not sent. Without the checkbox, a sign-in code is not sent and AI is not enabled.
+Data and purposes: We use your email address to send verification codes and create and protect your account. Your nickname is used for display. Journal text, photos you select, and focus records are used to display your entries, sync them across devices, and provide statistics. Your device keeps a newer local cache separated by account. An older shared local database is not automatically assigned to a new account or uploaded.
 
-You may withdraw AI consent in Settings → Privacy & Data. This stops future AI processing but preserves your records, cloud sync, and numerical statistics. Withdrawal cannot retrieve data already sent. Signing in again and agreeing after verification grants consent again.
+Storage and third parties: Cloud application data and photos are hosted on Alibaba Cloud infrastructure in mainland China; verification emails are sent through an email service. Data from other countries or regions may therefore be transferred to China. Before signing in or registering, you must actively agree to this notice and the AI Reflections Notice. Only after email verification do we send journal text, limited relevant historical text, or aggregated focus data to Moonshot AI for classification, reflections, and brief summaries. Journal photos are not sent to the model. Your entries are not made public to other users by this processing.
 
-AI output may be inaccurate. It is not a psychological diagnosis or medical advice. Please avoid entering unnecessary sensitive information or another person's private information.
+Your choices: You can withdraw AI consent in Settings → Privacy & Data to stop future content being sent to the model. Your records, cloud sync, and numerical statistics may remain. Withdrawal cannot retrieve data already sent to the third party. Consent is granted again only if you actively agree when signing in again. AI output may be inaccurate and is not a psychological diagnosis or medical advice. Please avoid entering unnecessary sensitive information or another person's private information.
 
-After deleting a journal entry, the content is removed from devices after successful sync. Offline deletions remain queued locally until sync. Account deletion requires another email verification. The account and related records are then deleted from the application database. Final backup and image-removal timelines will be stated in the published retention policy. This notice is still a beta version and does not claim any unverified third-party training or retention policy.
+Retention and deletion: We retain application data needed to provide the service while your account is active. When you delete a journal entry, its text and photo references are cleared from the application record; a deletion marker supports cross-device sync. Offline devices remove the content after reconnecting and syncing. Uploaded photos are removed by a background process that retries failures, so removal may not be immediate. Deleting your account requires another email verification. The account and related journal and focus records are then deleted from the application database, and this account's newer local cache is cleared. An older shared local file remains on the original device for your manual review and is not automatically removed when switching or deleting accounts.
 
-The older shared local file remains on the original device for manual review and is not automatically deleted when switching accounts.
+Database backups we maintain are rotated on a seven-day schedule and removed by a scheduled job. Copies created before deletion may remain until that rotation completes. Data already sent to the third-party model is handled under its applicable terms; we cannot promise immediate deletion by that provider or make unverified claims about training use. If photo cleanup fails, or if you want to inquire about, review, or request handling of remaining data, contact us at the email above.
 
-Privacy and data contact: gg5605568@gmail.com''';
+We will update this notice if our data practices materially change and, where appropriate, ask for your consent again.''';
 
-const aiDisclosureTextEn = '''AI Reflections Notice (2026-09-23)
+const aiDisclosureTextEn = '''AI Reflections Notice
+Last updated: September 23, 2026
 
 Flow-er uses a third-party large language model (LLM) service to classify journal entries and generate card-back reflections and brief summaries. This sends content to a third-party AI provider; it does not publish it to other users.
 
@@ -70,7 +107,7 @@ Consent remains effective without asking again for every entry. Enabling it does
 
 AI content may be inaccurate. It is for personal reflection only, not a psychological diagnosis, medical advice, or a guarantee of fact.
 
-This notice is still a beta version. Third-party retention, deletion, and protection practices must be verified and completed before formal release. We do not make unverified promises such as “never stored” or “never used for training.”
+The third party handles data it has received under its applicable terms. Withdrawing consent stops future transfers but cannot retrieve data sent earlier. We do not make unverified promises such as “never stored” or “never used for training.”
 
 Privacy and data contact: gg5605568@gmail.com''';
 
@@ -85,11 +122,18 @@ class PrivacyNoticePage extends StatelessWidget {
     body: SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: SelectableText(
-          showAiDisclosure
-              ? (UiText.english ? aiDisclosureTextEn : aiDisclosureText)
-              : (UiText.english ? privacyTextEn : privacyText),
-          style: const TextStyle(height: 1.8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              showAiDisclosure
+                  ? (UiText.english ? aiDisclosureTextEn : aiDisclosureText)
+                  : (UiText.english ? privacyTextEn : privacyText),
+              style: const TextStyle(height: 1.8),
+            ),
+            const SizedBox(height: 16),
+            const _PublicPrivacyPolicyLink(),
+          ],
         ),
       ),
     ),
@@ -216,6 +260,8 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         padding: const EdgeInsets.all(24),
         children: [
           SelectableText(UiText.english ? privacyTextEn : privacyText),
+          const SizedBox(height: 8),
+          const _PublicPrivacyPolicyLink(),
           const SizedBox(height: 24),
           if (email != null) ...[
             ListTile(

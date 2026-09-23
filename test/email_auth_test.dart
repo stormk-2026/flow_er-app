@@ -196,9 +196,9 @@ void main() {
     await tester.ensureVisible(find.text('《隐私说明》'));
     await tester.tap(find.text('《隐私说明》'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('流境隐私说明（'), findsOneWidget);
+    expect(find.textContaining('流境隐私说明'), findsOneWidget);
     expect(
-      find.textContaining('隐私与数据问题联系邮箱：gg5605568@gmail.com'),
+      find.textContaining('gg5605568@gmail.com'),
       findsOneWidget,
     );
     await tester.pageBack();

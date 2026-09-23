@@ -41,126 +41,111 @@ class SettingsPage extends ConsumerWidget {
       ),
       body: SafeArea(
         top: false,
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                children: [
-                  Text(
-                    '外观'.tr,
-                    style: GoogleFonts.notoSansSc(
-                      fontSize: 12,
-                      letterSpacing: 2,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _ThemeModeTile(
-                    value: settings.themeMode,
-                    onChanged: (mode) =>
-                        ref.read(settingsProvider.notifier).setThemeMode(mode),
-                  ),
-                  const SizedBox(height: 12),
-                  _LanguageTile(
-                    value: settings.language,
-                    onChanged: (language) => ref
-                        .read(settingsProvider.notifier)
-                        .setLanguage(language),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    '专注'.tr,
-                    style: GoogleFonts.notoSansSc(
-                      fontSize: 12,
-                      letterSpacing: 2,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SettingsSwitchTile(
-                    title: '扣置手机进入专注'.tr,
-                    subtitle: '开启后，手机静置于桌面也可进入心流；默认仅轻击三下'.tr,
-                    value: settings.sensorFocusEnabled,
-                    onChanged: (v) => ref
-                        .read(settingsProvider.notifier)
-                        .setSensorFocusEnabled(v),
-                  ),
-                  const SizedBox(height: 12),
-                  _SettingsSwitchTile(
-                    title: '声音'.tr,
-                    subtitle: '开启后播放点击、心笺与心流白噪音'.tr,
-                    value: settings.soundEnabled,
-                    onChanged: (v) async {
-                      await ref
-                          .read(settingsProvider.notifier)
-                          .setSoundEnabled(v);
-                      await ref.read(appAudioServiceProvider).setEnabled(v);
-                    },
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    '沉淀'.tr,
-                    style: GoogleFonts.notoSansSc(
-                      fontSize: 12,
-                      letterSpacing: 2,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: _settingsCardDecoration,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const PrivacyPage(),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '隐私与数据'.tr,
-                                  style: GoogleFonts.notoSansSc(
-                                    fontSize: 15,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              Icon(
-                                Icons.chevron_right,
-                                color: AppColors.textMuted,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            Text(
+              '外观'.tr,
+              style: GoogleFonts.notoSansSc(
+                fontSize: 12,
+                letterSpacing: 2,
+                color: AppColors.textMuted,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  'v1.0.0',
-                  style: GoogleFonts.notoSansSc(
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                    color: AppColors.textMuted.withValues(alpha: 0.7),
+            const SizedBox(height: 12),
+            _ThemeModeTile(
+              value: settings.themeMode,
+              onChanged: (mode) =>
+                  ref.read(settingsProvider.notifier).setThemeMode(mode),
+            ),
+            const SizedBox(height: 12),
+            _LanguageTile(
+              value: settings.language,
+              onChanged: (language) =>
+                  ref.read(settingsProvider.notifier).setLanguage(language),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              '专注'.tr,
+              style: GoogleFonts.notoSansSc(
+                fontSize: 12,
+                letterSpacing: 2,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _SettingsSwitchTile(
+              title: '扣置手机进入专注'.tr,
+              subtitle: '开启后，手机静置于桌面也可进入心流；默认仅轻击三下'.tr,
+              value: settings.sensorFocusEnabled,
+              onChanged: (v) =>
+                  ref.read(settingsProvider.notifier).setSensorFocusEnabled(v),
+            ),
+            const SizedBox(height: 12),
+            _SettingsSwitchTile(
+              title: '声音'.tr,
+              subtitle: '开启后播放点击、心笺与心流白噪音'.tr,
+              value: settings.soundEnabled,
+              onChanged: (v) async {
+                await ref.read(settingsProvider.notifier).setSoundEnabled(v);
+                await ref.read(appAudioServiceProvider).setEnabled(v);
+              },
+            ),
+            const SizedBox(height: 28),
+            Text(
+              '沉淀'.tr,
+              style: GoogleFonts.notoSansSc(
+                fontSize: 12,
+                letterSpacing: 2,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _TimeRewindTile(remainingToday: rewindQuota.remainingToday),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _settingsCardDecoration,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PrivacyPage(),
+                    ),
                   ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 18,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '隐私与数据'.tr,
+                            style: GoogleFonts.notoSansSc(
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'v1.0.0',
+                style: GoogleFonts.notoSansSc(
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                  color: AppColors.textMuted.withValues(alpha: 0.7),
                 ),
               ),
             ),

@@ -48,6 +48,13 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
+  testWidgets('公开隐私政策入口在登录前可见', (tester) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await tester.pumpWidget(const MaterialApp(home: PrivacyNoticePage()));
+    expect(find.text('查看公开版隐私政策（英文）'), findsOneWidget);
+    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+  });
+
   testWidgets('隐私页不再显示开关；撤回授权须确认且可以取消', (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;
     final client = ApiClient.instance.dio;
@@ -69,6 +76,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(SwitchListTile), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('查看公开版隐私政策（英文）'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('查看公开版隐私政策（英文）'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('撤回 AI 授权'),
       250,
@@ -99,7 +112,8 @@ void main() {
     );
     expect(find.text('注销前需验证当前登录邮箱'), findsOneWidget);
     expect(find.textContaining('b@example.com'), findsNothing);
-    expect(privacyText, contains('隐私与数据问题联系邮箱：gg5605568@gmail.com'));
+    expect(privacyText, contains('gg5605568@gmail.com'));
+    expect(privacyText, contains('7 天期限轮换'));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
