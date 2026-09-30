@@ -118,7 +118,11 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icons/flow_er_icon.png"
+  image_path: "assets/icons/flow_er_icon_dark.png"
+  adaptive_icon_background: "#101211"
+  adaptive_icon_foreground: "assets/icons/flow_er_icon_foreground.png"
+  adaptive_icon_foreground_inset: 16
+  adaptive_icon_monochrome: "assets/icons/flow_er_icon_foreground.png"
   remove_alpha_ios: true
   min_sdk_android: 21
   web:
