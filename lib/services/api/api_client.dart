@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _baseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://47.114.112.184:8000',
+  defaultValue: 'https://api.flow-er.cn',
 );
 const _tokenKey = 'auth_token';
 

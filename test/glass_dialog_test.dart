@@ -15,7 +15,7 @@ void main() {
     // Optional local visual QA; no system-font dependency in normal tests.
     if (const bool.fromEnvironment('GLASS_PREVIEW')) {
       final icons = await File(
-        '/Users/stormg/developer/tools/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+        '/Volumes/DevData/SDKs/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
       ).readAsBytes();
       await (FontLoader(
         'MaterialIcons',
